@@ -71,10 +71,18 @@ def _parse_responses(response):
         content[:content_length], content[content_length:]
 
     content = json.loads(content.decode(encoding))
-    yield Response(headers,
-                   id=int(content["id"]),
-                   result=content.get("result"),
-                   error=content.get("error"))
+    if isinstance(content, list):
+        # This is in response to a batch operation.
+        for scontent in content:
+            yield Response(headers,
+                           id=int(scontent["id"]),
+                           result=scontent.get("result"),
+                           error=scontent.get("error"))
+    else:
+        yield Response(headers,
+                       id=int(content["id"]),
+                       result=content.get("result"),
+                       error=content.get("error"))
 
     if next_response:
         yield from _parse_responses(next_response)

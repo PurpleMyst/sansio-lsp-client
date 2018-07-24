@@ -53,8 +53,7 @@ class Client:
         responses = _parse_responses(self._recv_buf)
 
         for response in responses:
-            request = \
-                self._unanswered_requests.pop(int(response.content["id"]))
+            request = self._unanswered_requests.pop(response.id)
 
             if request.method == "initialize":
                 assert self._state == ClientState.WAITING_FOR_INITIALIZED
@@ -67,7 +66,6 @@ class Client:
             else:
                 raise NotImplementedError((response, request))
 
-        # If everything was fine, we get here.
         self._recv_buf.clear()
 
     def initialize(self, process_id=None, root_uri=None):
