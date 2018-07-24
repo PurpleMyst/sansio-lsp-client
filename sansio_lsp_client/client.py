@@ -33,21 +33,13 @@ class Client:
         self._id_counter = 0
 
     def _make_request(self, method: str, params: Dict[str, Any] = None) -> bytes:
-        request = _make_request(
-            method=method,
-            params=params,
-            id=self._id_counter,
-        )
-        self._unanswered_requests[self._id_counter] = \
-            Request(method, params)
+        request = _make_request(method=method, params=params, id=self._id_counter)
+        self._unanswered_requests[self._id_counter] = Request(method, params)
         self._id_counter += 1
         return request
 
     def _make_notification(self, method: str, params: Dict[str, Any] = None) -> bytes:
-        return _make_request(
-            method=method,
-            params=params,
-        )
+        return _make_request(method=method, params=params)
 
     def recieve_bytes(self, data: bytes) -> Iterator[events.Event]:
         self._recv_buf += data
@@ -86,27 +78,19 @@ class Client:
         assert self._state == ClientState.NOT_INITIALIZED
         request = self._make_request(
             method="initialize",
-            params={
-                "processId": process_id,
-                "rootUri": root_uri,
-                "capabilities": {}
-            },
+            params={"processId": process_id, "rootUri": root_uri, "capabilities": {}},
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
         return request
 
     def shutdown(self) -> bytes:
         assert self._state == ClientState.NORMAL
-        request = self._make_request(
-            method="shutdown",
-        )
+        request = self._make_request(method="shutdown")
         self._state = ClientState.WAITING_FOR_SHUTDOWN
         return request
 
     def exit(self) -> bytes:
         assert self._state == ClientState.SHUTDOWN
-        request = self._make_notification(
-            method="exit",
-        )
+        request = self._make_notification(method="exit")
         self._state = ClientState.EXITED
         return request

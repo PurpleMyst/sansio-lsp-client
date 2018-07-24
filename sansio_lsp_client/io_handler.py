@@ -7,15 +7,17 @@ from .structs import Response
 from .errors import IncompleteResponseError
 
 
-def _make_request(method: str, params: Dict[str, Any] = None, id: int = None, *,
-                  encoding: str = "utf-8") -> bytes:
+def _make_request(
+    method: str,
+    params: Dict[str, Any] = None,
+    id: int = None,
+    *,
+    encoding: str = "utf-8",
+) -> bytes:
     request = bytearray()
 
     # Set up the actual JSONRPC content and encode it.
-    content: Dict[str, Any] = {
-        "jsonrpc": "2.0",
-        "method": method,
-    }
+    content: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}
     if params is not None:
         content["params"] = params
     if id is not None:
@@ -65,28 +67,35 @@ def _parse_responses(response: bytes) -> Iterator[Response]:
     # We need to verify that the raw_content is long enough, seeing as we might be
     # getting an incomplete request.
     if len(raw_content) < content_length:
-        raise IncompleteResponseError("Not enough bytes to "
-                                      "fulfill Content-Length requirements.")
+        raise IncompleteResponseError(
+            "Not enough bytes to " "fulfill Content-Length requirements."
+        )
 
     # Take only as many bytes as we need. If there's any remaining, they're
     # the next response's.
-    raw_content, next_response = \
-        raw_content[:content_length], raw_content[content_length:]
+    raw_content, next_response = (
+        raw_content[:content_length],
+        raw_content[content_length:],
+    )
 
     # FIXME: Do something more with the errors.
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
         # This is in response to a batch operation.
         for scontent in content:
-            yield Response(headers,
-                           id=int(scontent["id"]),
-                           result=scontent.get("result"),
-                           error=scontent.get("error"))
+            yield Response(
+                headers,
+                id=int(scontent["id"]),
+                result=scontent.get("result"),
+                error=scontent.get("error"),
+            )
     else:
-        yield Response(headers,
-                       id=int(content["id"]),
-                       result=content.get("result"),
-                       error=content.get("error"))
+        yield Response(
+            headers,
+            id=int(content["id"]),
+            result=content.get("result"),
+            error=content.get("error"),
+        )
 
     if next_response:
         yield from _parse_responses(next_response)
