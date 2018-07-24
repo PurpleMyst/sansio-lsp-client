@@ -1,15 +1,18 @@
 import cgi
 import json
 
+from typing import Dict, Any, Iterator
+
 from .structs import Response
 from .errors import IncompleteResponseError
 
 
-def _make_request(method, params=None, id=None, encoding="utf-8"):
+def _make_request(method: str, params: Dict[str, Any] = None, id: int = None, *,
+                  encoding: str = "utf-8") -> bytes:
     request = bytearray()
 
     # Set up the actual JSONRPC content and encode it.
-    content = {
+    content: Dict[str, Any] = {
         "jsonrpc": "2.0",
         "method": method,
     }
@@ -17,11 +20,11 @@ def _make_request(method, params=None, id=None, encoding="utf-8"):
         content["params"] = params
     if id is not None:
         content["id"] = id
-    content = json.dumps(content).encode(encoding)
+    encoded_content = json.dumps(content).encode(encoding)
 
     # Write the headers to the request body
     headers = {
-        "Content-Length": len(content),
+        "Content-Length": len(encoded_content),
         "Content-Type": f"application/vscode-jsonrpc; charset={encoding}",
     }
     for (key, value) in headers.items():
@@ -29,16 +32,16 @@ def _make_request(method, params=None, id=None, encoding="utf-8"):
     request += b"\r\n"
 
     # Append the content to the request
-    request += content
+    request += encoded_content
 
     return request
 
 
-def _parse_responses(response):
+def _parse_responses(response: bytes) -> Iterator[Response]:
     if b"\r\n\r\n" not in response:
         raise IncompleteResponseError("Incomplete headers")
 
-    header_lines, content = response.split(b"\r\n\r\n", 1)
+    header_lines, raw_content = response.split(b"\r\n\r\n", 1)
 
     # Parse the headers.
     headers = {}
@@ -59,18 +62,19 @@ def _parse_responses(response):
     # Content-Length
     content_length = int(headers["Content-Length"])
 
-    # We need to verify that the content is long enough, seeing as we might be
+    # We need to verify that the raw_content is long enough, seeing as we might be
     # getting an incomplete request.
-    if len(content) < content_length:
+    if len(raw_content) < content_length:
         raise IncompleteResponseError("Not enough bytes to "
                                       "fulfill Content-Length requirements.")
 
     # Take only as many bytes as we need. If there's any remaining, they're
     # the next response's.
-    content, next_response = \
-        content[:content_length], content[content_length:]
+    raw_content, next_response = \
+        raw_content[:content_length], raw_content[content_length:]
 
-    content = json.loads(content.decode(encoding))
+    # FIXME: Do something more with the errors.
+    content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
         # This is in response to a batch operation.
         for scontent in content:

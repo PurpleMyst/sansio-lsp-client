@@ -1,4 +1,10 @@
-import collections
+from typing import NamedTuple, Dict, Any, Union
 
-Initialized = collections.namedtuple("Initialized", "request")
-Shatdown = collections.namedtuple("Shatdown", "")
+Initialized = NamedTuple("Initialized", [
+    ("capabilities", Dict[str, Any]),
+    ("notification", bytes),
+])
+
+Shatdown = NamedTuple("Shatdown", [])
+
+Event = Union[Initialized, Shatdown]

@@ -8,7 +8,7 @@ from .errors import IncompleteResponseError
 from .events import Initialized, Shatdown
 
 
-def main():
+def main() -> None:
     sock = socket.socket()
     sock.connect(("localhost", int(os.environ.get("PORT", 8080))))
 
@@ -28,7 +28,9 @@ def main():
         for event in events:
             if isinstance(event, Initialized):
                 print("Initialized!")
-                sock.sendall(event.request)
+                print("Capabilities:")
+                __import__("pprint").pprint(event.capabilities)
+                sock.sendall(event.notification)
 
                 print("Shutting down")
                 sock.sendall(client.shutdown())
