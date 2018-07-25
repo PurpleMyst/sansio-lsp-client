@@ -13,15 +13,16 @@ def main() -> None:
     sock.connect(("localhost", int(os.environ.get("PORT", 8080))))
 
     client = Client()
-
-    sock.sendall(client.initialize())
+    client.initialize()
 
     while True:
+        sock.sendall(client.send())
+
         try:
             data = sock.recv(4096)
             if not data:
                 break
-            events = list(client.recieve_bytes(data))
+            events = list(client.recv(data))
         except IncompleteResponseError as e:
             continue
 
@@ -30,13 +31,12 @@ def main() -> None:
                 print("Initialized!")
                 print("Capabilities:")
                 __import__("pprint").pprint(event.capabilities)
-                sock.sendall(event.notification)
 
                 print("Shutting down")
-                sock.sendall(client.shutdown())
+                client.shutdown()
             elif isinstance(event, Shatdown):
                 print("Shutdown and exiting")
-                sock.sendall(client.exit())
+                client.exit()
             else:
                 raise NotImplementedError(event)
 

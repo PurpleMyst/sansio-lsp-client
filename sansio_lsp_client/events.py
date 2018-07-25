@@ -1,9 +1,9 @@
-from typing import NamedTuple, Dict, Any, Union
+from .structs import JSONDict
 
-Initialized = NamedTuple(
-    "Initialized", [("capabilities", Dict[str, Any]), ("notification", bytes)]
-)
+import typing as t
 
-Shatdown = NamedTuple("Shatdown", [])
+Initialized = t.NamedTuple("Initialized", [("capabilities", JSONDict)])
 
-Event = Union[Initialized, Shatdown]
+Shatdown = t.NamedTuple("Shatdown", [])
+
+Event = t.Union[Initialized, Shatdown]

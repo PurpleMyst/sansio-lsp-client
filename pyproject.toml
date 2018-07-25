@@ -12,3 +12,7 @@ license = "MIT"
 python = ">=3.6"
 
 [tool.poetry.dev-dependencies]
+
+[tool.black]
+line-length = 79
+py36 = true

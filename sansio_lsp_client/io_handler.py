@@ -1,15 +1,14 @@
 import cgi
 import json
+import typing as t
 
-from typing import Dict, Any, Iterator
-
-from .structs import Response
+from .structs import Response, JSONDict
 from .errors import IncompleteResponseError
 
 
 def _make_request(
     method: str,
-    params: Dict[str, Any] = None,
+    params: JSONDict = None,
     id: int = None,
     *,
     encoding: str = "utf-8",
@@ -17,7 +16,7 @@ def _make_request(
     request = bytearray()
 
     # Set up the actual JSONRPC content and encode it.
-    content: Dict[str, Any] = {"jsonrpc": "2.0", "method": method}
+    content: JSONDict = {"jsonrpc": "2.0", "method": method}
     if params is not None:
         content["params"] = params
     if id is not None:
