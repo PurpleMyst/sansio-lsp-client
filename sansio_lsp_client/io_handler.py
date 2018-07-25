@@ -38,7 +38,7 @@ def _make_request(
     return request
 
 
-def _parse_responses(response: bytes) -> Iterator[Response]:
+def _parse_responses(response: bytes) -> t.Iterator[Response]:
     if b"\r\n\r\n" not in response:
         raise IncompleteResponseError("Incomplete headers")
 
