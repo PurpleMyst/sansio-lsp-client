@@ -2,8 +2,20 @@ import cgi
 import json
 import typing as t
 
-from .structs import Response, JSONDict
+from .structs import Request, Response, JSONDict
 from .errors import IncompleteResponseError
+
+
+def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
+    headers_bytes = bytearray()
+    headers = {
+        "Content-Length": content_length,
+        "Content-Type": f"application/vscode-jsonrpc; charset={encoding}",
+    }
+    for (key, value) in headers.items():
+        headers_bytes += f"{key}: {value}\r\n".encode(encoding)
+    headers_bytes += b"\r\n"
+    return headers_bytes
 
 
 def _make_request(
@@ -24,13 +36,9 @@ def _make_request(
     encoded_content = json.dumps(content).encode(encoding)
 
     # Write the headers to the request body
-    headers = {
-        "Content-Length": len(encoded_content),
-        "Content-Type": f"application/vscode-jsonrpc; charset={encoding}",
-    }
-    for (key, value) in headers.items():
-        request += f"{key}: {value}\r\n".encode(encoding)
-    request += b"\r\n"
+    request += _make_headers(
+        content_length=len(encoded_content), encoding=encoding
+    )
 
     # Append the content to the request
     request += encoded_content
@@ -38,7 +46,35 @@ def _make_request(
     return request
 
 
-def _parse_responses(response: bytes) -> t.Iterator[Response]:
+def _make_response(
+    id: int,
+    result: JSONDict = None,
+    error: JSONDict = None,
+    *,
+    encoding: str = "utf-8",
+) -> bytes:
+    request = bytearray()
+
+    # Set up the actual JSONRPC content and encode it.
+    content: JSONDict = {"jsonrpc": "2.0", "id": id}
+    if result is not None:
+        content["result"] = result
+    if error is not None:
+        content["error"] = error
+    encoded_content = json.dumps(content).encode(encoding)
+
+    # Write the headers to the request body
+    request += _make_headers(
+        content_length=len(encoded_content), encoding=encoding
+    )
+
+    # Append the content to the request
+    request += encoded_content
+
+    return request
+
+
+def _parse_messages(response: bytes) -> t.Iterator[Response]:
     if b"\r\n\r\n" not in response:
         raise IncompleteResponseError("Incomplete headers")
 
@@ -77,24 +113,23 @@ def _parse_responses(response: bytes) -> t.Iterator[Response]:
         raw_content[content_length:],
     )
 
-    # FIXME: Do something more with the errors.
+    def do_it(request_or_response: JSONDict) -> t.Union[Response, Request]:
+        if "method" in request_or_response:
+            raise NotImplementedError
+        else:
+            return Response(
+                headers=headers,
+                id=int(request_or_response["id"]),
+                result=request_or_response.get("result"),
+                error=request_or_response.get("error"),
+            )
+
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
         # This is in response to a batch operation.
-        for scontent in content:
-            yield Response(
-                headers,
-                id=int(scontent["id"]),
-                result=scontent.get("result"),
-                error=scontent.get("error"),
-            )
+        yield from map(do_it, content)
     else:
-        yield Response(
-            headers,
-            id=int(content["id"]),
-            result=content.get("result"),
-            error=content.get("error"),
-        )
+        yield do_it(content)
 
     if next_response:
-        yield from _parse_responses(next_response)
+        yield from _parse_messages(next_response)

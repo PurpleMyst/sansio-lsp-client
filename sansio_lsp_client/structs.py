@@ -1,3 +1,4 @@
+import enum
 import typing as t
 
 # This is useful for some nice typing. The `Any`s are meant to be `JSONValue`,
@@ -7,7 +8,7 @@ JSONValue = t.Union[None, str, int, t.List[t.Any], t.Dict[str, t.Any]]
 JSONDict = t.Dict[str, JSONValue]
 
 Request = t.NamedTuple(
-    "Request", [("method", str), ("params", t.Optional[JSONDict])]
+    "Request", [("id", int), ("method", str), ("params", t.Optional[JSONDict])]
 )
 
 Response = t.NamedTuple(
@@ -19,3 +20,13 @@ Response = t.NamedTuple(
         ("error", t.Optional[JSONDict]),
     ],
 )
+
+
+class MessageType(enum.IntEnum):
+    ERROR = 1
+    WARNING = 2
+    INFO = 3
+    LOG = 4
+
+
+MessageActionItem = t.NamedTuple("MessageActionItem", [("title", str)])

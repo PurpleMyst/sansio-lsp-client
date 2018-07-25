@@ -13,7 +13,7 @@ def main() -> None:
     sock.connect(("localhost", int(os.environ.get("PORT", 8080))))
 
     client = Client()
-    client.initialize()
+    client.initialize(trace="verbose")
 
     while True:
         sock.sendall(client.send())
