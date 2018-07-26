@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # just a canvas to play in.
-import json
 import os
 import pprint
 import socket
@@ -8,12 +7,16 @@ import urllib.request
 
 from .client import Client
 from .errors import IncompleteResponseError
-from .events import Initialized, Shutdown, ShowMessageRequest
+from .events import Initialized, Shutdown, ShowMessageRequest, Completion
 from .structs import (
+    CompletionTriggerKind,
     TextDocumentItem,
+    TextDocumentPosition,
+    CompletionContext,
     TextDocumentIdentifier,
     VersionedTextDocumentIdentifier,
     TextDocumentContentChangeEvent,
+    Position,
 )
 
 
@@ -23,10 +26,11 @@ def main() -> None:
 
     client = Client(trace="verbose")
 
-    file_path = "sansio_lsp_client/client.py"
+    file_path = "./playground.py"
     file_uri = "file://" + urllib.request.pathname2url(
         os.path.abspath(file_path)
     )
+    print("File URI:", file_uri)
 
     while True:
         sock.sendall(client.send())
@@ -55,23 +59,28 @@ def main() -> None:
                     )
                 )
 
-                client.did_change(
-                    text_document=TextDocumentIdentifier(uri=file_uri),
-                    content_changes=[
-                        TextDocumentContentChangeEvent.from_python(0, 2, "!#")
-                    ],
+                client.completions(
+                    text_document_position=TextDocumentPosition(
+                        textDocument=TextDocumentIdentifier(uri=file_uri),
+                        position=Position(
+                            line=5, character=4 + len("struct.") + 1
+                        ),
+                    ),
+                    context=CompletionContext(
+                        triggerKind=CompletionTriggerKind.INVOKED
+                    ),
                 )
-
-                # TODO: Ask for completions here.
+            elif isinstance(event, Shutdown):
+                print("Shutdown and exiting")
+                client.exit()
+            elif isinstance(event, Completion):
+                pprint.pprint(event.completion_list.items)
 
                 client.did_close(
                     text_document=TextDocumentIdentifier(uri=file_uri)
                 )
 
                 client.shutdown()
-            elif isinstance(event, Shutdown):
-                print("Shutdown and exiting")
-                client.exit()
             else:
                 raise NotImplementedError(event)
 

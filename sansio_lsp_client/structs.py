@@ -3,17 +3,18 @@ import typing as t
 
 from attr import attrs, attrib
 
-# XXX: Temporarily disabled this type annotation until I get json schemas.
-# JSONValue = t.Union[None, str, int, t.List[t.Any], t.Dict[str, t.Any]]
+# XXX: Replace the non-commented-out code with what's commented out once nested
+# types become a thing in mypy.
+# JSONValue = t.Union[None, str, int, t.List['JSONValue'], t.Dict[str, 'JSONValue']]
 # JSONDict = t.Dict[str, JSONValue]
 JSONDict = t.Dict[str, t.Any]
 
 
 @attrs
 class Request:
-    id: int = attrib()
     method: str = attrib()
-    params: t.Optional[JSONDict] = attrib()
+    id: t.Optional[int] = attrib(default=None)
+    params: t.Optional[JSONDict] = attrib(default=None)
 
 
 @attrs
@@ -50,11 +51,12 @@ class TextDocumentIdentifier:
 
 @attrs
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
-    version: t.Optional[int] = attrib()
+    version: t.Optional[int] = attrib(default=None)
 
 
 @attrs
 class Position:
+    # NB: These are both zero-based.
     line: int = attrib()
     character: int = attrib()
 
@@ -64,20 +66,102 @@ class Range:
     start: Position = attrib()
     end: Position = attrib()
 
+    def __len__(self) -> int:
+        raise NotImplementedError(
+            "i as a developer am too stupid to figure out how to implement this"
+        )
+
 
 @attrs
 class TextDocumentContentChangeEvent:
-    range: t.Optional[Range] = attrib()
-    rangeLength: t.Optional[int] = attrib()
     text: str = attrib()
+    range: t.Optional[Range] = attrib(default=None)
+    rangeLength: t.Optional[int] = attrib(default=None)
 
-    # XXX: This is a weird method name.
-    @classmethod
-    def from_python(
-        cls, change_start: int, change_end: int, change_text: str
+    def change_range(
+        cls, change_start: Position, change_end: Position, change_text: str
     ) -> "TextDocumentContentChangeEvent":
+        change_range = Range(change_start, change_end)
         return cls(
-            range=Range(change_start, change_end),
-            rangeLength=change_end - change_start,
-            text=change_text,
+            range=change_range, rangeLength=len(change_range), text=change_text
         )
+
+    def change_whole_document(
+        cls, change_text: str
+    ) -> "TextDocumentContentChangeEvent":
+        return cls(text=change_text)
+
+
+@attrs
+class TextDocumentPosition:
+    textDocument: TextDocumentIdentifier = attrib()
+    position: Position = attrib()
+
+
+class CompletionTriggerKind(enum.IntEnum):
+    INVOKED = 1
+    TRIGGER_CHARACTER = 2
+    TRIGGER_FOR_INCOMPLETE_COMPLETIONS = 3
+
+
+@attrs
+class CompletionContext:
+    triggerKind: CompletionTriggerKind = attrib()
+    triggerCharacter: t.Optional[str] = attrib(default=None)
+
+
+class MarkupKind(enum.Enum):
+    PLAINTEXT = "plaintext"
+    MARKDOWN = "markdown"
+
+
+@attrs
+class MarkupContent:
+    kind: MarkupKind = attrib()
+    value: str = attrib()
+
+
+@attrs
+class TextEdit:
+    range: Range = attrib()
+    newText: str = attrib()
+
+
+@attrs
+class Command:
+    title: str = attrib()
+    command: str = attrib()
+    arguments: t.Optional[t.List[t.Any]] = attrib(default=None)
+
+
+class InsertTextFormat(enum.IntEnum):
+    PLAIN_TEXT = 1
+    SNIPPET = 2
+
+
+@attrs
+class CompletionItem:
+    label: str = attrib()
+    # TODO: implement CompletionItemKind.
+    kind: t.Optional[int] = attrib(default=None)
+    detail: t.Optional[str] = attrib(default=None)
+    # FIXME: Allow `t.Union[str, MarkupContent]` here by defining a cattrs custom
+    # loads hook.
+    documentation: t.Optional[str] = attrib(default=None)
+    deprecated: t.Optional[bool] = attrib(default=None)
+    preselect: t.Optional[bool] = attrib(default=None)
+    sortText: t.Optional[str] = attrib(default=None)
+    filterText: t.Optional[str] = attrib(default=None)
+    insertText: t.Optional[str] = attrib(default=None)
+    insertTextFormat: t.Optional[InsertTextFormat] = attrib(default=None)
+    textEdit: t.Optional[TextEdit] = attrib(default=None)
+    additionalTextEdits: t.Optional[t.List[TextEdit]] = attrib(default=None)
+    commitCharacters: t.Optional[t.List[str]] = attrib(default=None)
+    command: t.Optional[Command] = attrib(default=None)
+    data: t.Optional[t.Any] = attrib(default=None)
+
+
+@attrs
+class CompletionList:
+    isIncomplete: bool = attrib()
+    items: t.List[CompletionItem] = attrib()

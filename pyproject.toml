@@ -20,3 +20,4 @@ black = "^18.3-alpha.0"
 [tool.black]
 line-length = 79
 py36 = true
+exclude = 'build/|buck-out/|dist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|/playground.py'

@@ -5,6 +5,7 @@ import cattr
 
 from .events import (
     Initialized,
+    Completion,
     ServerRequest,
     Shutdown,
     Event,
@@ -15,6 +16,10 @@ from .events import (
 )
 from .structs import (
     Response,
+    TextDocumentPosition,
+    CompletionContext,
+    CompletionList,
+    CompletionItem,
     Request,
     JSONDict,
     MessageActionItem,
@@ -105,7 +110,10 @@ class Client:
                 response = message
                 request = self._unanswered_requests.pop(response.id)
 
-                assert response.error is None
+                # FIXME: The errors have meanings.
+                if response.error is not None:
+                    __import__("pprint").pprint(response.error)
+                    raise RuntimeError("Response error!")
 
                 if request.method == "initialize":
                     assert self._state == ClientState.WAITING_FOR_INITIALIZED
@@ -116,6 +124,22 @@ class Client:
                     assert self._state == ClientState.WAITING_FOR_SHUTDOWN
                     yield Shutdown()
                     self._state = ClientState.SHUTDOWN
+                elif request.method == "textDocument/completion":
+                    completion_list = None
+
+                    try:
+                        completion_list = cattr.structure(
+                            response.result, CompletionList
+                        )
+                    except TypeError:
+                        try:
+                            completion_list = cattr.structure(
+                                response.result, t.List[CompletionItem]
+                            )
+                        except TypeError:
+                            assert response.result is None
+
+                    yield Completion(completion_list)
                 else:
                     raise NotImplementedError((response, request))
             elif isinstance(message, Request):
@@ -190,3 +214,16 @@ class Client:
             method="textDocument/didClose",
             params={"textDocument": cattr.unstructure(text_document)},
         )
+
+    def completions(
+        self,
+        text_document_position: TextDocumentPosition,
+        context: CompletionContext = None,
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+        params = {}
+        params.update(cattr.unstructure(text_document_position))
+        if context is not None:
+            params.update(cattr.unstructure(context))
+        print("completion params", params)
+        self._send_request(method="textDocument/completion", params=params)

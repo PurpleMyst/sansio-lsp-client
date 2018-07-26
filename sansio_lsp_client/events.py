@@ -3,7 +3,13 @@ import typing as t
 import attr
 from attr import attrs, attrib
 
-from .structs import JSONDict, MessageType, MessageActionItem
+from .structs import (
+    JSONDict,
+    MessageType,
+    MessageActionItem,
+    CompletionItem,
+    CompletionList,
+)
 
 
 @attrs
@@ -57,3 +63,10 @@ class ShowMessageRequest(ServerRequest):
 class LogMessage(ServerNotification):
     type: MessageType = attrib()
     message: str = attrib()
+
+
+@attrs
+class Completion:
+    completion_list: t.Union[
+        CompletionList, t.List[CompletionItem], None
+    ] = attrib()

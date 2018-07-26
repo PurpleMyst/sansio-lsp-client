@@ -102,8 +102,8 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     # Content-Length
     content_length = int(headers["Content-Length"])
 
-    # We need to verify that the raw_content is long enough, seeing as we might be
-    # getting an incomplete request.
+    # We need to verify that the raw_content is long enough, seeing as we might
+    # be getting an incomplete request.
     if len(raw_content) < content_length:
         raise IncompleteResponseError(
             "Not enough bytes to fulfill Content-Length requirements."
