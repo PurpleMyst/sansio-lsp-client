@@ -12,6 +12,17 @@ class Event:
 
 
 @attrs
+class ServerRequest(Event):
+    _client: "Client" = attrib(init=False)
+    _id: int = attrib(init=False)
+
+
+@attrs
+class ServerNotification(Event):
+    pass
+
+
+@attrs
 class Initialized(Event):
     capabilities: JSONDict = attrib()
 
@@ -22,19 +33,16 @@ class Shutdown(Event):
 
 
 @attrs
-class ShowMessage(Event):
+class ShowMessage(ServerNotification):
     type: MessageType = attrib()
     message: str = attrib()
 
 
 @attrs
-class ShowMessageRequest(Event):
+class ShowMessageRequest(ServerRequest):
     type: MessageType = attrib()
     message: str = attrib()
     actions: t.Optional[t.List[MessageActionItem]] = attrib()
-
-    _client: "Client" = attrib(init=False)
-    _id: int = attrib(init=False)
 
     def reply(self, action: MessageActionItem = None) -> None:
         """
@@ -46,6 +54,6 @@ class ShowMessageRequest(Event):
 
 
 @attrs
-class LogMessage(Event):
+class LogMessage(ServerNotification):
     type: MessageType = attrib()
     message: str = attrib()

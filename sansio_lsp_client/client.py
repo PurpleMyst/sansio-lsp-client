@@ -5,10 +5,12 @@ import cattr
 
 
 from .events import (
-    Event,
     Initialized,
+    ServerRequest,
     Shutdown,
+    Event,
     ShowMessage,
+    ServerNotification,
     ShowMessageRequest,
     LogMessage,
 )
@@ -115,15 +117,27 @@ class Client:
             elif isinstance(message, Request):
                 request = message
 
+                E = t.TypeVar("E", bound=Event)
+
+                def structure_request(event_cls: t.Type[E]) -> E:
+                    if issubclass(event_cls, ServerRequest):
+                        event = cattr.structure(request.params, event_cls)
+                        event._id = request.id
+                        event._client = self
+                        return event
+                    elif issubclass(event_cls, ServerNotification):
+                        return cattr.structure(request.params, event_cls)
+                    else:
+                        raise TypeError(
+                            "`event_cls` must be a subclass of ServerRequest or ServerNotification"
+                        )
+
                 if request.method == "window/showMessage":
-                    yield cattr.structure(request.params, ShowMessage)
+                    yield structure_request(ShowMessage)
                 elif request.method == "window/showMessageRequest":
-                    event = cattr.structure(request.params, ShowMessageRequest)
-                    event._id = request.id
-                    event._client = self
-                    yield event
+                    yield structure_request(ShowMessageRequest)
                 elif request.method == "window/logMessage":
-                    yield cattr.structure(request.params, LogMessage)
+                    yield structure_request(LogMessage)
                 else:
                     raise NotImplementedError(request)
             else:
