@@ -5,6 +5,7 @@ from attr import attrs, attrib
 
 from .structs import (
     JSONDict,
+    Range,
     MessageType,
     MessageActionItem,
     CompletionItem,
@@ -77,3 +78,41 @@ class Completion:
 @attrs
 class WillSaveWaitUntilEdits:
     edits: t.Optional[t.List[TextEdit]] = attrib()
+
+
+@attrs
+class Location:
+    uri: str = attrib()
+    range: Range = attrib()
+
+
+@attrs
+class DiagnosticRelatedInformation:
+    location: Location = str()
+
+    message: str = attrib()
+
+
+@attrs
+class Diagnostic:
+    range: Range = attrib()
+
+    # TODO: Make this a proper enum
+    severity: int = attrib(default=None)
+
+    # TODO: Support this as an union of str and int
+    code: t.Optional[t.Any] = attrib(default=None)
+
+    source: t.Optional[str] = attrib(default=None)
+
+    message: t.Optional[str] = attrib(default=None)
+
+    relatedInformation: t.Optional[
+        t.List[DiagnosticRelatedInformation]
+    ] = attrib(default=None)
+
+
+@attrs
+class PublishDiagnostics(ServerNotification):
+    uri: str = attrib()
+    diagnostics: t.List[Diagnostic] = attrib()

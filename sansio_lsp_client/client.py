@@ -8,6 +8,7 @@ from .events import (
     Completion,
     ServerRequest,
     Shutdown,
+    PublishDiagnostics,
     Event,
     ShowMessage,
     ServerNotification,
@@ -96,7 +97,7 @@ class Client:
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
-    def recv(self, data: bytes) -> t.Iterator[Event]:
+    def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
 
         # We must exhaust the generator so IncompleteResponseError
@@ -107,6 +108,7 @@ class Client:
         # can just clear whatever we were holding.
         self._recv_buf.clear()
 
+        events = []
         for message in messages:
             if isinstance(message, Response):
                 response = message
@@ -120,11 +122,13 @@ class Client:
                 if request.method == "initialize":
                     assert self._state == ClientState.WAITING_FOR_INITIALIZED
                     self._send_notification("initialized")
-                    yield cattr.structure(response.result, Initialized)
+                    events.append(
+                        cattr.structure(response.result, Initialized)
+                    )
                     self._state = ClientState.NORMAL
                 elif request.method == "shutdown":
                     assert self._state == ClientState.WAITING_FOR_SHUTDOWN
-                    yield Shutdown()
+                    events.append(Shutdown())
                     self._state = ClientState.SHUTDOWN
                 elif request.method == "textDocument/completion":
                     completion_list = None
@@ -135,15 +139,20 @@ class Client:
                         )
                     except TypeError:
                         try:
-                            completion_list = cattr.structure(
-                                response.result, t.List[CompletionItem]
+                            completion_list = CompletionList(
+                                isIncomplete=false,
+                                items=cattr.structure(
+                                    response.result, t.List[CompletionItem]
+                                ),
                             )
                         except TypeError:
                             assert response.result is None
 
-                    yield Completion(completion_list)
+                    events.append(Completion(completion_list))
                 elif request.method == "textDocument/willSaveWaitUntil":
-                    yield WillSaveWaitUntilEdits(edits=response.result)
+                    events.append(
+                        WillSaveWaitUntilEdits(edits=response.result)
+                    )
                 else:
                     raise NotImplementedError((response, request))
             elif isinstance(message, Request):
@@ -165,15 +174,19 @@ class Client:
                         )
 
                 if request.method == "window/showMessage":
-                    yield structure_request(ShowMessage)
+                    events.append(structure_request(ShowMessage))
                 elif request.method == "window/showMessageRequest":
-                    yield structure_request(ShowMessageRequest)
+                    events.append(structure_request(ShowMessageRequest))
                 elif request.method == "window/logMessage":
-                    yield structure_request(LogMessage)
+                    events.append(structure_request(LogMessage))
+                elif request.method == "textDocument/publishDiagnostics":
+                    events.append(structure_request(PublishDiagnostics))
                 else:
                     raise NotImplementedError(request)
             else:
                 raise RuntimeError("nobody will ever see this, i hope")
+
+            return events
 
     def send(self) -> bytes:
         send_buf = self._send_buf[:]
