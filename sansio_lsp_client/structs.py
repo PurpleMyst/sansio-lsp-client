@@ -33,3 +33,51 @@ class MessageType(enum.IntEnum):
 @attrs
 class MessageActionItem:
     title: str = attrib()
+
+
+@attrs
+class TextDocumentItem:
+    uri: str = attrib()
+    languageId: str = attrib()
+    version: int = attrib()
+    text: str = attrib()
+
+
+@attrs
+class TextDocumentIdentifier:
+    uri: str = attrib()
+
+
+@attrs
+class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+    version: t.Optional[int] = attrib()
+
+
+@attrs
+class Position:
+    line: int = attrib()
+    character: int = attrib()
+
+
+@attrs
+class Range:
+    start: Position = attrib()
+    end: Position = attrib()
+
+
+@attrs
+class TextDocumentContentChangeEvent:
+    range: t.Optional[Range] = attrib()
+    rangeLength: t.Optional[int] = attrib()
+    text: str = attrib()
+
+    # XXX: This is a weird method name.
+    @classmethod
+    def from_python(
+        cls, change_start: int, change_end: int, change_text: str
+    ) -> "TextDocumentContentChangeEvent":
+        return cls(
+            range=Range(change_start, change_end),
+            rangeLength=change_end - change_start,
+            text=change_text,
+        )

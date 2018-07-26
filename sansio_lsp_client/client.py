@@ -3,7 +3,6 @@ import typing as t
 
 import cattr
 
-
 from .events import (
     Initialized,
     ServerRequest,
@@ -20,6 +19,10 @@ from .structs import (
     JSONDict,
     MessageActionItem,
     MessageType,
+    TextDocumentItem,
+    TextDocumentIdentifier,
+    VersionedTextDocumentIdentifier,
+    TextDocumentContentChangeEvent,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -34,6 +37,7 @@ class ClientState(enum.Enum):
 
 
 class Client:
+    # TODO: Save the encoding given here.
     def __init__(
         self, process_id: int = None, root_uri: str = None, trace: str = "off"
     ) -> None:
@@ -157,3 +161,32 @@ class Client:
         assert self._state == ClientState.SHUTDOWN
         self._send_notification(method="exit")
         self._state = ClientState.EXITED
+
+    def did_open(self, text_document: TextDocumentItem) -> None:
+        assert self._state == ClientState.NORMAL
+        self._send_notification(
+            method="textDocument/didOpen",
+            params={"textDocument": cattr.unstructure(text_document)},
+        )
+
+    def did_change(
+        self,
+        text_document: VersionedTextDocumentIdentifier,
+        content_changes: t.List[TextDocumentContentChangeEvent],
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+
+        self._send_notification(
+            method="textDocument/didChange",
+            params={
+                "textDocument": cattr.unstructure(text_document),
+                "contentChanges": cattr.unstructure(content_changes),
+            },
+        )
+
+    def did_close(self, text_document: TextDocumentIdentifier) -> None:
+        assert self._state == ClientState.NORMAL
+        self._send_notification(
+            method="textDocument/didClose",
+            params={"textDocument": cattr.unstructure(text_document)},
+        )

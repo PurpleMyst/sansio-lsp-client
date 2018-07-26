@@ -4,10 +4,17 @@ import json
 import os
 import pprint
 import socket
+import urllib.request
 
 from .client import Client
 from .errors import IncompleteResponseError
 from .events import Initialized, Shutdown, ShowMessageRequest
+from .structs import (
+    TextDocumentItem,
+    TextDocumentIdentifier,
+    VersionedTextDocumentIdentifier,
+    TextDocumentContentChangeEvent,
+)
 
 
 def main() -> None:
@@ -15,6 +22,11 @@ def main() -> None:
     sock.connect(("localhost", int(os.environ.get("PORT", 8080))))
 
     client = Client(trace="verbose")
+
+    file_path = "sansio_lsp_client/client.py"
+    file_uri = "file://" + urllib.request.pathname2url(
+        os.path.abspath(file_path)
+    )
 
     while True:
         sock.sendall(client.send())
@@ -30,33 +42,31 @@ def main() -> None:
         for event in events:
             if isinstance(event, Initialized):
                 print("Initialized!")
-                print("Capabilities:")
+
+                print("Server capabilities:")
                 pprint.pprint(event.capabilities)
 
-                request = json.dumps(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 42,
-                        "method": "window/showMessageRequest",
-                        "params": {
-                            "type": 3,
-                            "message": "Save or destroy?",
-                            "actions": [
-                                {"title": "Save"},
-                                {"title": "Destroy"},
-                            ],
-                        },
-                    }
-                ).encode("utf-8")
-                events = list(
-                    client.recv(
-                        b"Content-Length: %d\r\n" % len(request)
-                        + b"Content-Type: application/vscode-jsonrpc; charset=utf8\r\n"
-                        + b"\r\n"
-                        + request
+                client.did_open(
+                    TextDocumentItem(
+                        uri=file_uri,
+                        languageId="python",
+                        text=open(file_path).read(),
+                        version=0,
                     )
                 )
-                pprint.pprint(events[0])
+
+                client.did_change(
+                    text_document=TextDocumentIdentifier(uri=file_uri),
+                    content_changes=[
+                        TextDocumentContentChangeEvent.from_python(0, 2, "!#")
+                    ],
+                )
+
+                # TODO: Ask for completions here.
+
+                client.did_close(
+                    text_document=TextDocumentIdentifier(uri=file_uri)
+                )
 
                 client.shutdown()
             elif isinstance(event, Shutdown):
