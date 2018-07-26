@@ -165,3 +165,9 @@ class CompletionItem:
 class CompletionList:
     isIncomplete: bool = attrib()
     items: t.List[CompletionItem] = attrib()
+
+
+class TextDocumentSaveReason(enum.IntEnum):
+    MANUAL = 1
+    AFTER_DELAY = 2
+    FOCUS_OUT = 3

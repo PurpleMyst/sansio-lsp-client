@@ -16,6 +16,7 @@ from .structs import (
     TextDocumentIdentifier,
     VersionedTextDocumentIdentifier,
     TextDocumentContentChangeEvent,
+    TextDocumentSaveReason,
     Position,
 )
 
@@ -74,10 +75,18 @@ def main() -> None:
                 print("Shutdown and exiting")
                 client.exit()
             elif isinstance(event, Completion):
-                pprint.pprint(event.completion_list.items)
+                print("Completions:")
+                pprint.pprint(
+                    [item.label for item in event.completion_list.items]
+                )
 
                 client.did_close(
                     text_document=TextDocumentIdentifier(uri=file_uri)
+                )
+
+                client.will_save(
+                    text_document=TextDocumentIdentifier(uri=file_uri),
+                    reason=TextDocumentSaveReason.MANUAL,
                 )
 
                 client.shutdown()

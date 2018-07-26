@@ -28,6 +28,7 @@ from .structs import (
     TextDocumentIdentifier,
     VersionedTextDocumentIdentifier,
     TextDocumentContentChangeEvent,
+    TextDocumentSaveReason,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -208,6 +209,20 @@ class Client:
             },
         )
 
+    def will_save(
+        self,
+        text_document: TextDocumentIdentifier,
+        reason: TextDocumentSaveReason,
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+        self._send_notification(
+            method="textDocument/willSave",
+            params={
+                "textDocument": cattr.unstructure(text_document),
+                "reason": cattr.unstructure(reason),
+            },
+        )
+
     def did_close(self, text_document: TextDocumentIdentifier) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(
@@ -225,5 +240,4 @@ class Client:
         params.update(cattr.unstructure(text_document_position))
         if context is not None:
             params.update(cattr.unstructure(context))
-        print("completion params", params)
         self._send_request(method="textDocument/completion", params=params)
