@@ -249,10 +249,10 @@ class Client:
         self, text_document: TextDocumentIdentifier, text: str = None
     ) -> None:
         assert self._state == ClientState.NORMAL
-        params = ({"textDocument": cattr.unstructure(text_document)},)
+        params = {"textDocument": cattr.unstructure(text_document)}
         if text is not None:
             params["text"] = text
-        self._send_notification(method="textDocument/didClose", params=params)
+        self._send_notification(method="textDocument/didSave", params=params)
 
     def did_close(self, text_document: TextDocumentIdentifier) -> None:
         assert self._state == ClientState.NORMAL
