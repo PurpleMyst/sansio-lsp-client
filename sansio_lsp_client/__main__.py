@@ -89,6 +89,10 @@ def main() -> None:
                     reason=TextDocumentSaveReason.MANUAL,
                 )
 
+                client.did_save(
+                    text_document=TextDocumentIdentifier(uri=file_uri)
+                )
+
                 client.shutdown()
             else:
                 raise NotImplementedError(event)
