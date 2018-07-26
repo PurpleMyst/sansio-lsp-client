@@ -9,17 +9,22 @@ from attr import attrs, attrib
 # JSONDict = t.Dict[str, JSONValue]
 JSONDict = t.Dict[str, t.Any]
 
+# XXX: We can't have this be both str and int due to `cattrs` restrictions. How
+# can we fix this?
+# Id = t.Union[str, int]
+Id = int
+
 
 @attrs
 class Request:
     method: str = attrib()
-    id: t.Optional[int] = attrib(default=None)
+    id: t.Optional[Id] = attrib(default=None)
     params: t.Optional[JSONDict] = attrib(default=None)
 
 
 @attrs
 class Response:
-    id: int = attrib()
+    id: t.Optional[Id] = attrib(default=None)
     result: t.Optional[JSONDict] = attrib(default=None)
     error: t.Optional[JSONDict] = attrib(default=None)
 

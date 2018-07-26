@@ -190,6 +190,11 @@ class Client:
         self._send_notification(method="exit")
         self._state = ClientState.EXITED
 
+    def cancel_last_request(self) -> None:
+        self._send_notification(
+            method="$/cancelRequest", params={"id": self._id_counter - 1}
+        )
+
     def did_open(self, text_document: TextDocumentItem) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(

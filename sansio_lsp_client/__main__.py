@@ -94,6 +94,7 @@ def main() -> None:
                 )
 
                 client.shutdown()
+                client.cancel_last_request()
             else:
                 raise NotImplementedError(event)
 
