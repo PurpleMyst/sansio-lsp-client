@@ -11,6 +11,7 @@ from .events import (
     Event,
     ShowMessage,
     ServerNotification,
+    WillSaveWaitUntilEdits,
     ShowMessageRequest,
     LogMessage,
 )
@@ -141,6 +142,8 @@ class Client:
                             assert response.result is None
 
                     yield Completion(completion_list)
+                elif request.method == "textDocument/willSaveWaitUntil":
+                    yield WillSaveWaitUntilEdits(edits=response.result)
                 else:
                     raise NotImplementedError((response, request))
             elif isinstance(message, Request):
@@ -217,6 +220,20 @@ class Client:
         assert self._state == ClientState.NORMAL
         self._send_notification(
             method="textDocument/willSave",
+            params={
+                "textDocument": cattr.unstructure(text_document),
+                "reason": cattr.unstructure(reason),
+            },
+        )
+
+    def will_save_wait_until(
+        self,
+        text_document: TextDocumentIdentifier,
+        reason: TextDocumentSaveReason,
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+        self._send_request(
+            method="textDocument/willSaveWaitUntil",
             params={
                 "textDocument": cattr.unstructure(text_document),
                 "reason": cattr.unstructure(reason),

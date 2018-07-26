@@ -9,6 +9,7 @@ from .structs import (
     MessageActionItem,
     CompletionItem,
     CompletionList,
+    TextEdit,
 )
 
 
@@ -70,3 +71,9 @@ class Completion:
     completion_list: t.Union[
         CompletionList, t.List[CompletionItem], None
     ] = attrib()
+
+
+# XXX: not sure how to name this event.
+@attrs
+class WillSaveWaitUntilEdits:
+    edits: t.Optional[t.List[TextEdit]] = attrib()
