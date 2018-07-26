@@ -10,8 +10,12 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.6"
+attrs = "^18.1"
+cattrs = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
+mypy = "^0.620.0"
+black = "^18.3-alpha.0"
 
 [tool.black]
 line-length = 79

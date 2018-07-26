@@ -1,7 +1,17 @@
 import enum
 import typing as t
 
-from . import events
+import cattr
+
+
+from .events import (
+    Event,
+    Initialized,
+    Shutdown,
+    ShowMessage,
+    ShowMessageRequest,
+    LogMessage,
+)
 from .structs import (
     Response,
     Request,
@@ -22,7 +32,9 @@ class ClientState(enum.Enum):
 
 
 class Client:
-    def __init__(self) -> None:
+    def __init__(
+        self, process_id: int = None, root_uri: str = None, trace: str = "off"
+    ) -> None:
         self._state = ClientState.NOT_INITIALIZED
 
         # Used to save data as it comes in (from `recieve_bytes`) until we have
@@ -40,6 +52,18 @@ class Client:
         # bignums, but I think that's an unlikely enough case that checking for
         # it would just litter the code unnecessarily.
         self._id_counter = 0
+
+        # We'll just immediately send off an "initialize" request.
+        self._send_request(
+            method="initialize",
+            params={
+                "processId": process_id,
+                "rootUri": root_uri,
+                "capabilities": {},
+                "trace": trace,
+            },
+        )
+        self._state = ClientState.WAITING_FOR_INITIALIZED
 
     def _send_request(self, method: str, params: JSONDict = None) -> None:
         request = _make_request(
@@ -59,7 +83,7 @@ class Client:
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
-    def recv(self, data: bytes) -> t.Iterator[events.Event]:
+    def recv(self, data: bytes) -> t.Iterator[Event]:
         self._recv_buf += data
 
         # We must exhaust the generator so IncompleteResponseError
@@ -79,70 +103,36 @@ class Client:
 
                 if request.method == "initialize":
                     assert self._state == ClientState.WAITING_FOR_INITIALIZED
-                    assert response.result is not None
                     self._send_notification("initialized")
-                    yield events.Initialized(
-                        capabilities=response.result["capabilities"]
-                    )
+                    yield cattr.structure(response.result, Initialized)
                     self._state = ClientState.NORMAL
                 elif request.method == "shutdown":
                     assert self._state == ClientState.WAITING_FOR_SHUTDOWN
-                    yield events.Shatdown()
+                    yield Shutdown()
                     self._state = ClientState.SHUTDOWN
                 else:
                     raise NotImplementedError((response, request))
             elif isinstance(message, Request):
-                request = Request(
-                    id=message["id"],
-                    method=message["method"],
-                    params=message.get("params"),
-                )
+                request = message
 
                 if request.method == "window/showMessage":
-                    yield events.ShowMessage(
-                        type=MessageType(request.params["type"]),
-                        message=request.params["message"],
-                    )
+                    yield cattr.structure(request.params, ShowMessage)
                 elif request.method == "window/showMessageRequest":
-                    yield events.ShowMessageRequest(
-                        id=request.id,
-                        type=MessageType(request.params["type"]),
-                        message=request.params["message"],
-                        actions=[
-                            MessageActionItem(title=action["title"])
-                            for action in request.params["actions"]
-                        ],
-                    )
+                    event = cattr.structure(request.params, ShowMessageRequest)
+                    event._id = request.id
+                    event._client = self
+                    yield event
                 elif request.method == "window/logMessage":
-                    yield events.LogMessage(
-                        type=MessageType(request.params["type"]),
-                        message=request.params["message"],
-                    )
+                    yield cattr.structure(request.params, LogMessage)
                 else:
                     raise NotImplementedError(request)
             else:
-                raise RuntimeError("nobody will ever see this")
+                raise RuntimeError("nobody will ever see this, i hope")
 
     def send(self) -> bytes:
         send_buf = self._send_buf[:]
         self._send_buf.clear()
         return send_buf
-
-    # XXX: Should we just move this into `__init__`?
-    def initialize(
-        self, process_id: int = None, root_uri: str = None, trace: str = "off"
-    ) -> None:
-        assert self._state == ClientState.NOT_INITIALIZED
-        self._send_request(
-            method="initialize",
-            params={
-                "processId": process_id,
-                "rootUri": root_uri,
-                "capabilities": {},
-                "trace": trace,
-            },
-        )
-        self._state = ClientState.WAITING_FOR_INITIALIZED
 
     def shutdown(self) -> None:
         assert self._state == ClientState.NORMAL
@@ -153,8 +143,3 @@ class Client:
         assert self._state == ClientState.SHUTDOWN
         self._send_notification(method="exit")
         self._state = ClientState.EXITED
-
-    def reply_to_message_action_request(
-        self, id: int, action: MessageActionItem = None
-    ) -> None:
-        self._send_response(id=id, result=action)

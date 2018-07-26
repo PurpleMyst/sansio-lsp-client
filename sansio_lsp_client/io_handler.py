@@ -2,6 +2,8 @@ import cgi
 import json
 import typing as t
 
+import cattr
+
 from .structs import Request, Response, JSONDict
 from .errors import IncompleteResponseError
 
@@ -74,7 +76,7 @@ def _make_response(
     return request
 
 
-def _parse_messages(response: bytes) -> t.Iterator[Response]:
+def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     if b"\r\n\r\n" not in response:
         raise IncompleteResponseError("Incomplete headers")
 
@@ -86,10 +88,11 @@ def _parse_messages(response: bytes) -> t.Iterator[Response]:
         key, value = header_line.decode("ascii").split(": ", 1)
         headers[key] = value
 
-    # Let's now verify and parse a few headers. Well, the only headers
-    # supported currently.
-    assert "Content-Length" in headers
-    assert "Content-Type" in headers
+    # We will now parse the Content-Type and Content-Length headers. Since for
+    # version 3.0 of the Language Server Protocol they're the only ones, we can
+    # just verify they're there and not keep them around in the Response
+    # object.
+    assert set(headers.keys()) == {"Content-Type", "Content-Length"}
 
     # Content-Type and encoding.
     content_type, metadata = cgi.parse_header(headers["Content-Type"])
@@ -103,7 +106,7 @@ def _parse_messages(response: bytes) -> t.Iterator[Response]:
     # getting an incomplete request.
     if len(raw_content) < content_length:
         raise IncompleteResponseError(
-            "Not enough bytes to " "fulfill Content-Length requirements."
+            "Not enough bytes to fulfill Content-Length requirements."
         )
 
     # Take only as many bytes as we need. If there's any remaining, they're
@@ -113,16 +116,22 @@ def _parse_messages(response: bytes) -> t.Iterator[Response]:
         raw_content[content_length:],
     )
 
-    def do_it(request_or_response: JSONDict) -> t.Union[Response, Request]:
-        if "method" in request_or_response:
-            raise NotImplementedError
-        else:
-            return Response(
-                headers=headers,
-                id=int(request_or_response["id"]),
-                result=request_or_response.get("result"),
-                error=request_or_response.get("error"),
-            )
+    def do_it(data: JSONDict) -> t.Union[Response, Request]:
+        del data["jsonrpc"]
+
+        try:
+            response = cattr.structure(data, Response)
+            return response
+        except TypeError:
+            pass
+
+        try:
+            request = cattr.structure(data, Request)
+            return request
+        except TypeError:
+            pass
+
+        raise RuntimeError(f"{data!r} is neither a Request nor a Response!")
 
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):

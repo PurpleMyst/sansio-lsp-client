@@ -1,25 +1,26 @@
 import enum
 import typing as t
 
-# This is useful for some nice typing. The `Any`s are meant to be `JSONValue`,
-# but nested types aren't supported. Sadly this leads to a false positive for
-# an error in client.py:69.
-JSONValue = t.Union[None, str, int, t.List[t.Any], t.Dict[str, t.Any]]
-JSONDict = t.Dict[str, JSONValue]
+from attr import attrs, attrib
 
-Request = t.NamedTuple(
-    "Request", [("id", int), ("method", str), ("params", t.Optional[JSONDict])]
-)
+# XXX: Temporarily disabled this type annotation until I get json schemas.
+# JSONValue = t.Union[None, str, int, t.List[t.Any], t.Dict[str, t.Any]]
+# JSONDict = t.Dict[str, JSONValue]
+JSONDict = t.Dict[str, t.Any]
 
-Response = t.NamedTuple(
-    "Response",
-    [
-        ("headers", t.Dict[str, str]),
-        ("id", int),
-        ("result", t.Optional[JSONDict]),
-        ("error", t.Optional[JSONDict]),
-    ],
-)
+
+@attrs
+class Request:
+    id: int = attrib()
+    method: str = attrib()
+    params: t.Optional[JSONDict] = attrib()
+
+
+@attrs
+class Response:
+    id: int = attrib()
+    result: t.Optional[JSONDict] = attrib(default=None)
+    error: t.Optional[JSONDict] = attrib(default=None)
 
 
 class MessageType(enum.IntEnum):
@@ -29,4 +30,6 @@ class MessageType(enum.IntEnum):
     LOG = 4
 
 
-MessageActionItem = t.NamedTuple("MessageActionItem", [("title", str)])
+@attrs
+class MessageActionItem:
+    title: str = attrib()

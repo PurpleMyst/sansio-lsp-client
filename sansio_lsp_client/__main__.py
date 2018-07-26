@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 # just a canvas to play in.
-import socket
+import json
 import os
+import pprint
+import socket
 
 from .client import Client
 from .errors import IncompleteResponseError
-from .events import Initialized, Shatdown
+from .events import Initialized, Shutdown, ShowMessageRequest
 
 
 def main() -> None:
     sock = socket.socket()
     sock.connect(("localhost", int(os.environ.get("PORT", 8080))))
 
-    client = Client()
-    client.initialize(trace="verbose")
+    client = Client(trace="verbose")
 
     while True:
         sock.sendall(client.send())
@@ -30,11 +31,35 @@ def main() -> None:
             if isinstance(event, Initialized):
                 print("Initialized!")
                 print("Capabilities:")
-                __import__("pprint").pprint(event.capabilities)
+                pprint.pprint(event.capabilities)
 
-                print("Shutting down")
+                request = json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 42,
+                        "method": "window/showMessageRequest",
+                        "params": {
+                            "type": 3,
+                            "message": "Save or destroy?",
+                            "actions": [
+                                {"title": "Save"},
+                                {"title": "Destroy"},
+                            ],
+                        },
+                    }
+                ).encode("utf-8")
+                events = list(
+                    client.recv(
+                        b"Content-Length: %d\r\n" % len(request)
+                        + b"Content-Type: application/vscode-jsonrpc; charset=utf8\r\n"
+                        + b"\r\n"
+                        + request
+                    )
+                )
+                pprint.pprint(events[0])
+
                 client.shutdown()
-            elif isinstance(event, Shatdown):
+            elif isinstance(event, Shutdown):
                 print("Shutdown and exiting")
                 client.exit()
             else:
