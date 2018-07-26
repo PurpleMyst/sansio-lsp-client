@@ -1,12 +1,15 @@
 [tool.poetry]
 name = "sansio-lsp-client"
-version = "0.1.0"
+version = "0.2.0"
 description = """
 An implementation of the client side of the LSP protocol, useful for \
 mbedding easily in your editor.\
 """
 authors = ["Purple Myst <PurpleMyst@users.noreply.github.com>"]
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/PurpleMyst/sansio-lsp-client"
+keywords = ["sansio", "languageserver"]
 
 [tool.poetry.dependencies]
 python = ">=3.6"
