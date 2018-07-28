@@ -77,7 +77,7 @@ class Range:
 
         if self.end.line == self.start.line:
             line = text_lines[self.start.line]
-            return len(line[self.start.character:self.end.character])
+            return len(line[self.start.character : self.end.character])
         else:
             total = 0
 
