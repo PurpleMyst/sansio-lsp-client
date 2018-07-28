@@ -1,3 +1,6 @@
+import typing as t
+import difflib
+
 def calculate_change_events(
     old_text: str, new_text: str
 ) -> t.List[lsp.TextDocumentContentChangeEvent]:
