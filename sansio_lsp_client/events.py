@@ -88,8 +88,7 @@ class Location:
 
 @attrs
 class DiagnosticRelatedInformation:
-    location: Location = str()
-
+    location: Location = attrib()
     message: str = attrib()
 
 
