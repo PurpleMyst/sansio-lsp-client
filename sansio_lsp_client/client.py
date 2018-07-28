@@ -186,7 +186,7 @@ class Client:
             else:
                 raise RuntimeError("nobody will ever see this, i hope")
 
-            return events
+        return events
 
     def send(self) -> bytes:
         send_buf = self._send_buf[:]
