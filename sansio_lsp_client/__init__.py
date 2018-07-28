@@ -5,4 +5,4 @@ from .events import *
 from .structs import *
 from .errors import *
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"

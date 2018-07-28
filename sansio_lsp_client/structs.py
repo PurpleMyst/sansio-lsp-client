@@ -83,6 +83,7 @@ class TextDocumentContentChangeEvent:
     range: t.Optional[Range] = attrib(default=None)
     rangeLength: t.Optional[int] = attrib(default=None)
 
+    @classmethod
     def change_range(
         cls, change_start: Position, change_end: Position, change_text: str
     ) -> "TextDocumentContentChangeEvent":
@@ -91,6 +92,7 @@ class TextDocumentContentChangeEvent:
             range=change_range, rangeLength=len(change_range), text=change_text
         )
 
+    @classmethod
     def change_whole_document(
         cls, change_text: str
     ) -> "TextDocumentContentChangeEvent":
