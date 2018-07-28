@@ -77,7 +77,7 @@ class Completion:
 # XXX: not sure how to name this event.
 @attrs
 class WillSaveWaitUntilEdits:
-    edits: t.Optional[t.List[TextEdit]] = attrib()
+    edits: t.Optional[t.List[TextEdit]] = attrib(default=None)
 
 
 @attrs

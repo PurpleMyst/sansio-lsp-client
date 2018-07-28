@@ -140,7 +140,7 @@ class Client:
                     except TypeError:
                         try:
                             completion_list = CompletionList(
-                                isIncomplete=false,
+                                isIncomplete=False,
                                 items=cattr.structure(
                                     response.result, t.List[CompletionItem]
                                 ),
