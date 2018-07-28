@@ -71,10 +71,24 @@ class Range:
     start: Position = attrib()
     end: Position = attrib()
 
-    def __len__(self) -> int:
-        raise NotImplementedError(
-            "i as a developer am too stupid to figure out how to implement this"
-        )
+    # XXX: I should really test this method.
+    def calculate_length(self, text: str) -> int:
+        text_lines = text.splitlines()
+
+        if self.end.line == self.start.line:
+            line = text_lines[self.start.line]
+            return len(line[self.start.character:self.end.character])
+        else:
+            total = 0
+
+            total += len(text_lines[self.start.line][self.start.character])
+
+            for line_number in range(self.start.line + 1, self.end.line):
+                total += len(text_lines[line_number])
+
+            total += len(text_lines[self.end.line][: self.end.character])
+
+            return total
 
 
 @attrs
@@ -85,11 +99,17 @@ class TextDocumentContentChangeEvent:
 
     @classmethod
     def change_range(
-        cls, change_start: Position, change_end: Position, change_text: str
+        cls,
+        change_start: Position,
+        change_end: Position,
+        change_text: str,
+        old_text: str,
     ) -> "TextDocumentContentChangeEvent":
         change_range = Range(change_start, change_end)
         return cls(
-            range=change_range, rangeLength=len(change_range), text=change_text
+            range=change_range,
+            rangeLength=change_range.calculate_length(old_text),
+            text=change_text,
         )
 
     @classmethod
@@ -152,8 +172,8 @@ class CompletionItem:
     # TODO: implement CompletionItemKind.
     kind: t.Optional[int] = attrib(default=None)
     detail: t.Optional[str] = attrib(default=None)
-    # FIXME: Allow `t.Union[str, MarkupContent]` here by defining a cattrs custom
-    # loads hook.
+    # FIXME: Allow `t.Union[str, MarkupContent]` here by defining a cattrs
+    # custom loads hook.
     documentation: t.Optional[str] = attrib(default=None)
     deprecated: t.Optional[bool] = attrib(default=None)
     preselect: t.Optional[bool] = attrib(default=None)
