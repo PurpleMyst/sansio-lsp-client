@@ -204,3 +204,41 @@ class TextDocumentSaveReason(enum.IntEnum):
     MANUAL = 1
     AFTER_DELAY = 2
     FOCUS_OUT = 3
+
+
+@attrs
+class Location:
+    uri: str = attrib()
+    range: Range = attrib()
+
+
+@attrs
+class DiagnosticRelatedInformation:
+    location: Location = attrib()
+    message: str = attrib()
+
+
+class DiagnosticSeverity(enum.IntEnum):
+    ERROR = 1
+    WARNING = 2
+    INFORMATION = 3
+    HINT = 4
+
+
+@attrs
+class Diagnostic:
+    range: Range = attrib()
+
+    # TODO: Make this a proper enum
+    severity: DiagnosticSeverity = attrib(default=None)
+
+    # TODO: Support this as an union of str and int
+    code: t.Optional[t.Any] = attrib(default=None)
+
+    source: t.Optional[str] = attrib(default=None)
+
+    message: t.Optional[str] = attrib(default=None)
+
+    relatedInformation: t.Optional[
+        t.List[DiagnosticRelatedInformation]
+    ] = attrib(default=None)
