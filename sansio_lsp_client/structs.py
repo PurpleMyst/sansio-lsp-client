@@ -71,7 +71,6 @@ class Range:
     start: Position = attrib()
     end: Position = attrib()
 
-    # XXX: I should really test this method.
     def calculate_length(self, text: str) -> int:
         text_lines = text.splitlines()
 
@@ -81,7 +80,7 @@ class Range:
         else:
             total = 0
 
-            total += len(text_lines[self.start.line][self.start.character])
+            total += len(text_lines[self.start.line][self.start.character :])
 
             for line_number in range(self.start.line + 1, self.end.line):
                 total += len(text_lines[line_number])
@@ -105,6 +104,13 @@ class TextDocumentContentChangeEvent:
         change_text: str,
         old_text: str,
     ) -> "TextDocumentContentChangeEvent":
+        """
+        Create a TextDocumentContentChangeEvent reflecting the given changes.
+
+        Nota bene: If you're creating a list of TextDocumentContentChangeEvent based on many changes,
+        `old_text` must reflect the state of the text after all previous change events happened.
+        Or you can just use `sansio_lsp_client.utils.calculate_change_events`.
+        """
         change_range = Range(change_start, change_end)
         return cls(
             range=change_range,
