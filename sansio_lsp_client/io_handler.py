@@ -120,15 +120,19 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     def do_it(data: JSONDict) -> t.Union[Response, Request]:
         del data["jsonrpc"]
 
+        # Request must come first because it has a non-optional attrib
+        #
+        # that is, any Request is also a valid Response (everything just gets
+        # filled in with None)
         try:
-            response = cattr.structure(data, Response)
-            return response
+            request = cattr.structure(data, Request)
+            return request
         except TypeError:
             pass
 
         try:
-            request = cattr.structure(data, Request)
-            return request
+            response = cattr.structure(data, Response)
+            return response
         except TypeError:
             pass
 
