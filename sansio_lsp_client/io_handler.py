@@ -120,15 +120,21 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     def do_it(data: JSONDict) -> t.Union[Response, Request]:
         del data["jsonrpc"]
 
+        # check if it's Request or Response.
+        #
+        # With older versions of cattr, you would get TypeError if you try to
+        # parse a Response as a Request or a Request as a Response, but now it
+        # just fills everything with None.
+        #
         try:
-            response = cattr.structure(data, Response)
-            return response
+            request = cattr.structure(data, Request)
+            return request
         except TypeError:
             pass
 
         try:
-            request = cattr.structure(data, Request)
-            return request
+            response = cattr.structure(data, Response)
+            return response
         except TypeError:
             pass
 
