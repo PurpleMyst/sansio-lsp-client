@@ -79,15 +79,15 @@ class Client:
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
 
-    def _send_request(self, method: str, params: JSONDict = None) -> None:
-        request = _make_request(
-            method=method, params=params, id=self._id_counter
-        )
-        self._send_buf += request
-        self._unanswered_requests[self._id_counter] = Request(
-            id=self._id_counter, method=method, params=params
-        )
+    def _send_request(self, method: str, params: JSONDict = None) -> int:
+        id = self._id_counter
         self._id_counter += 1
+
+        self._send_buf += _make_request(method=method, params=params, id=id)
+        self._unanswered_requests[id] = Request(
+            id=id, method=method, params=params
+        )
+        return id
 
     def _send_notification(self, method: str, params: JSONDict = None) -> None:
         self._send_buf += _make_request(method=method, params=params)
@@ -148,7 +148,7 @@ class Client:
                         except TypeError:
                             assert response.result is None
 
-                    events.append(Completion(completion_list))
+                    events.append(Completion(response.id, completion_list))
                 elif request.method == "textDocument/willSaveWaitUntil":
                     events.append(
                         WillSaveWaitUntilEdits(edits=response.result)
@@ -278,10 +278,11 @@ class Client:
         self,
         text_document_position: TextDocumentPosition,
         context: CompletionContext = None,
-    ) -> None:
+    ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}
         params.update(cattr.unstructure(text_document_position))
         if context is not None:
             params.update(cattr.unstructure(context))
-        self._send_request(method="textDocument/completion", params=params)
+        return self._send_request(
+            method="textDocument/completion", params=params)
