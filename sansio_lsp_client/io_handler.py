@@ -120,12 +120,10 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     def do_it(data: JSONDict) -> t.Union[Response, Request]:
         del data["jsonrpc"]
 
-        # check if it's Request or Response.
+        # Request must come first because it has a non-optional attrib
         #
-        # With older versions of cattr, you would get TypeError if you try to
-        # parse a Response as a Request or a Request as a Response, but now it
-        # just fills everything with None.
-        #
+        # that is, any Request is also a valid Response (everything just gets
+        # filled in with None)
         try:
             request = cattr.structure(data, Request)
             return request
