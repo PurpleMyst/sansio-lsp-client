@@ -79,6 +79,10 @@ class Client:
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
 
+    @property
+    def state(self):
+        return self._state
+
     def _send_request(self, method: str, params: JSONDict = None) -> int:
         id = self._id_counter
         self._id_counter += 1
