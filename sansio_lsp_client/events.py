@@ -70,6 +70,7 @@ class LogMessage(ServerNotification):
 
 @attrs
 class Completion:
+    message_id: int = attrib()
     completion_list: t.Union[
         CompletionList, t.List[CompletionItem], None
     ] = attrib()
