@@ -1,0 +1,20 @@
+name: Build & publish to PyPI
+on:
+  push:
+    branches: [master]
+
+jobs:
+  publish:
+    name: Build & publish distribution to PyPI
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Setup Python 3.6
+        uses: actions/setup-python@v1
+        with: { python-version: 3.6 }
+      - name: Setup poetry
+        run: python -m pip install --user poetry
+      - name: Build
+        run: python -m poetry build -vvv -n
+      - name: Publish!
+        run: python -m poetry publish -vvv -n -u __token__ -p ${{ secrets.PyPiAPIKey }}
