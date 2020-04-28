@@ -1,0 +1,147 @@
+[[package]]
+category = "dev"
+description = "A small Python module for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
+name = "appdirs"
+optional = false
+python-versions = "*"
+version = "1.4.3"
+
+[[package]]
+category = "main"
+description = "Classes Without Boilerplate"
+name = "attrs"
+optional = false
+python-versions = "*"
+version = "18.2.0"
+
+[package.extras]
+dev = ["coverage", "hypothesis", "pympler", "pytest", "six", "zope.interface", "sphinx", "zope.interface", "pre-commit"]
+docs = ["sphinx", "zope.interface"]
+tests = ["coverage", "hypothesis", "pympler", "pytest", "six", "zope.interface"]
+
+[[package]]
+category = "dev"
+description = "The uncompromising code formatter."
+name = "black"
+optional = false
+python-versions = ">=3.6"
+version = "18.9b0"
+
+[package.dependencies]
+appdirs = "*"
+attrs = ">=17.4.0"
+click = ">=6.5"
+toml = ">=0.9.4"
+
+[package.extras]
+d = ["aiohttp (>=3.3.2)"]
+
+[[package]]
+category = "main"
+description = "Composable complex class support for attrs."
+name = "cattrs"
+optional = false
+python-versions = "*"
+version = "0.9.2"
+
+[package.dependencies]
+attrs = ">=17.3"
+
+[package.extras]
+dev = ["sphinx", "bumpversion", "coverage", "flake8", "hypothesis", "pendulum", "pytest", "tox", "watchdog", "wheel"]
+
+[[package]]
+category = "dev"
+description = "Composable command line interface toolkit"
+name = "click"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+version = "7.1.2"
+
+[[package]]
+category = "dev"
+description = "Optional static typing for Python"
+name = "mypy"
+optional = false
+python-versions = "*"
+version = "0.620"
+
+[package.dependencies]
+typed-ast = ">=1.1.0,<1.2.0"
+
+[package.extras]
+dmypy = ["psutil (>=5.4.0,<5.5.0)"]
+
+[[package]]
+category = "dev"
+description = "Python Library for Tom's Obvious, Minimal Language"
+name = "toml"
+optional = false
+python-versions = "*"
+version = "0.10.0"
+
+[[package]]
+category = "dev"
+description = "a fork of Python 2 and 3 ast modules with type comment support"
+name = "typed-ast"
+optional = false
+python-versions = "*"
+version = "1.1.2"
+
+[metadata]
+content-hash = "b5a7123b7cf2e81dae8a2ef3b1c095cc5a794739a92661849ffcb329c53cfc45"
+python-versions = ">=3.6"
+
+[metadata.files]
+appdirs = [
+    {file = "appdirs-1.4.3-py2.py3-none-any.whl", hash = "sha256:d8b24664561d0d34ddfaec54636d502d7cea6e29c3eaf68f3df6180863e2166e"},
+    {file = "appdirs-1.4.3.tar.gz", hash = "sha256:9e5896d1372858f8dd3344faf4e5014d21849c756c8d5701f78f8a103b372d92"},
+]
+attrs = [
+    {file = "attrs-18.2.0-py2.py3-none-any.whl", hash = "sha256:ca4be454458f9dec299268d472aaa5a11f67a4ff70093396e1ceae9c76cf4bbb"},
+    {file = "attrs-18.2.0.tar.gz", hash = "sha256:10cbf6e27dbce8c30807caf056c8eb50917e0eaafe86347671b57254006c3e69"},
+]
+black = [
+    {file = "black-18.9b0-py36-none-any.whl", hash = "sha256:817243426042db1d36617910df579a54f1afd659adb96fc5032fcf4b36209739"},
+    {file = "black-18.9b0.tar.gz", hash = "sha256:e030a9a28f542debc08acceb273f228ac422798e5215ba2a791a6ddeaaca22a5"},
+]
+cattrs = [
+    {file = "cattrs-0.9.2-py2.py3-none-any.whl", hash = "sha256:43cff719f5af6b8a7e1a8d67656ffbf5c5ca2b0469fe9b6adcb2e3a104f16460"},
+    {file = "cattrs-0.9.2.tar.gz", hash = "sha256:68fab4822f15354ea63ddbde13bcbc32c9d13ed6cb6e700106fb5a5f2dfa37ed"},
+]
+click = [
+    {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
+    {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
+]
+mypy = [
+    {file = "mypy-0.620-py3-none-any.whl", hash = "sha256:673ea75fb750289b7d1da1331c125dc62fc1c3a8db9129bb372ae7b7d5bf300a"},
+    {file = "mypy-0.620.tar.gz", hash = "sha256:c770605a579fdd4a014e9f0a34b6c7a36ce69b08100ff728e96e27445cef3b3c"},
+]
+toml = [
+    {file = "toml-0.10.0-py2.7.egg", hash = "sha256:f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"},
+    {file = "toml-0.10.0-py2.py3-none-any.whl", hash = "sha256:235682dd292d5899d361a811df37e04a8828a5b1da3115886b73cf81ebc9100e"},
+    {file = "toml-0.10.0.tar.gz", hash = "sha256:229f81c57791a41d65e399fc06bf0848bab550a9dfd5ed66df18ce5f05e73d5c"},
+]
+typed-ast = [
+    {file = "typed-ast-1.1.2.tar.gz", hash = "sha256:4304399ff89452871348f6fb7a7112454cd508fbe3eb49b5ed711cce9b99fe9e"},
+    {file = "typed_ast-1.1.2-cp33-cp33m-win32.whl", hash = "sha256:1b784cd3c6778cd7b99afb41ddcaa1eb5b35a399210db7fcf24ed082670e0070"},
+    {file = "typed_ast-1.1.2-cp33-cp33m-win_amd64.whl", hash = "sha256:0cf0c406af2a6472a02254fe1ced40cb81a7c1215b7ceba88a3bb9c3a864f851"},
+    {file = "typed_ast-1.1.2-cp34-cp34m-manylinux1_i686.whl", hash = "sha256:5eb14e6b3aa5ff5d7e964b978a718227b5576b3965f1dd71dd055f71054233a5"},
+    {file = "typed_ast-1.1.2-cp34-cp34m-manylinux1_x86_64.whl", hash = "sha256:99c140583eef6b50f3de4af44718a4fc63108671b29c468b5ff83ed383facf6d"},
+    {file = "typed_ast-1.1.2-cp34-cp34m-win32.whl", hash = "sha256:9525f4cbe3eb7b9e19a87c765ca9bbc1147ce18f75059e15138eb7fc59ce02e3"},
+    {file = "typed_ast-1.1.2-cp34-cp34m-win_amd64.whl", hash = "sha256:57cb23412dac214383c6b6f0f7b0aec2d0c001a936af20f0b53542bbe4ba08a7"},
+    {file = "typed_ast-1.1.2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:935157ada4aa115d61c59e759e43c5862b04d19ffe6fe5c9d735716587535cb7"},
+    {file = "typed_ast-1.1.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:d2d2cce74165cae2663167c921e331fb0eecfff2e93254dfdb16beb99716e519"},
+    {file = "typed_ast-1.1.2-cp35-cp35m-win32.whl", hash = "sha256:8219b6147af4d609096b6db2c797281e19fd3f7232ef35932bc74a812ff417a0"},
+    {file = "typed_ast-1.1.2-cp35-cp35m-win_amd64.whl", hash = "sha256:8a7e9635cf0aaca04b2a4d4b3501c0dbc5c49a140b2e55b00e218d41ed2a69c8"},
+    {file = "typed_ast-1.1.2-cp36-cp36m-macosx_10_6_intel.whl", hash = "sha256:aaf63a024b54d2788cff3400de79009ee8a23594b581d4f33d90b7c67f8c05bd"},
+    {file = "typed_ast-1.1.2-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:471a7f12e55ad22f7a4bb2c3e62e39e3ab78008b24c61c48c9042e63b7359bb9"},
+    {file = "typed_ast-1.1.2-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:fa4eafaa57074958f065c2a6222d8f11162739f8c9db125472a1f04794a0b91d"},
+    {file = "typed_ast-1.1.2-cp36-cp36m-win32.whl", hash = "sha256:c3313b3fa1b6b722866eda370c14fd8f4962b6bcd1f6d43f42d6818a8b29d998"},
+    {file = "typed_ast-1.1.2-cp36-cp36m-win_amd64.whl", hash = "sha256:2d7a322c1df6cccff2381c0475c1ebf82d3e9a331e48ed4ea89bbc72a8dedca6"},
+    {file = "typed_ast-1.1.2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:d6fc3b9fbf67d556223aa5493501022e1d585b9a1892fa87ba1257627763c461"},
+    {file = "typed_ast-1.1.2-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:c9342947e5f3480473d836754d69965a12ac2237d99ae85d1e3fdd1c1722669f"},
+    {file = "typed_ast-1.1.2-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:4658aebc30c0af80e63b579e917c04b592bdf10ef40da381b2fd179075b5d1b6"},
+    {file = "typed_ast-1.1.2-cp37-cp37m-win32.whl", hash = "sha256:9e358ce6d4c43a90c15b99b76261adc852998680628c780f26fd64bc21adb9fa"},
+    {file = "typed_ast-1.1.2-cp37-cp37m-win_amd64.whl", hash = "sha256:cb1c7e5b3195103f5a784db7969fc55463cfae9b354e3b97cc219d32293d5e65"},
+]
