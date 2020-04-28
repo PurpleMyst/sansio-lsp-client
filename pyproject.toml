@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sansio-lsp-client"
-version = "0.6.0"
+version = "0.6.1"
 description = """
 An implementation of the client side of the LSP protocol, useful for \
 mbedding easily in your editor.\
