@@ -82,25 +82,29 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
 
     header_lines, raw_content = response.split(b"\r\n\r\n", 1)
 
-    # Parse the headers.
-    headers = {}
+    # Many langservers don't set Content-Type header for whatever reason. We
+    # use a sane default for that.
+    #
+    # Langserver spec links to RFC 7230 which says that header names should be
+    # case-insensitive.
+    headers = {"content-type": "application/vscode-jsonrpc; charset=utf-8"}
     for header_line in header_lines.split(b"\r\n"):
         key, value = header_line.decode("ascii").split(": ", 1)
-        headers[key] = value
+        headers[key.lower()] = value
 
     # We will now parse the Content-Type and Content-Length headers. Since for
     # version 3.0 of the Language Server Protocol they're the only ones, we can
     # just verify they're there and not keep them around in the Response
     # object.
-    assert set(headers.keys()) == {"Content-Type", "Content-Length"}
+    assert set(headers.keys()) == {"content-type", "content-length"}
 
     # Content-Type and encoding.
-    content_type, metadata = cgi.parse_header(headers["Content-Type"])
+    content_type, metadata = cgi.parse_header(headers["content-type"])
     assert content_type == "application/vscode-jsonrpc"
     encoding = metadata["charset"]
 
     # Content-Length
-    content_length = int(headers["Content-Length"])
+    content_length = int(headers["content-length"])
 
     # We need to verify that the raw_content is long enough, seeing as we might
     # be getting an incomplete request.
