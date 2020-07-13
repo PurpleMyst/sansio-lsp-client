@@ -104,13 +104,8 @@ class Client:
     def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
 
-        # We must exhaust the generator so IncompleteResponseError
-        # is raised before we actually process anything.
+        # _parse_messages deletes consumed data from self._recv_buf
         messages = list(_parse_messages(self._recv_buf))
-
-        # If we get here, that means the previous line didn't error out so we
-        # can just clear whatever we were holding.
-        self._recv_buf.clear()
 
         events = []
         for message in messages:

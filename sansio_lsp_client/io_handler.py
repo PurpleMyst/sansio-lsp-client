@@ -5,7 +5,6 @@ import typing as t
 import cattr
 
 from .structs import Request, Response, JSONDict
-from .errors import IncompleteResponseError
 
 
 def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
@@ -76,11 +75,34 @@ def _make_response(
     return request
 
 
-def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
-    if b"\r\n\r\n" not in response:
-        raise IncompleteResponseError("Incomplete headers")
+# _parse_messages is kind of tricky.
+#
+# It used to work like this:
+#   - Take in bytes argument
+#   - Yield parsed things (Responses and Requests)
+#   - Raise IncompleteResponseError if parsing fails by running out of bytes
+#
+# Then, if the bytes contained two valid things (Responses or Requests) and
+# then only a part of another thing, this function would first parse and yield
+# the valid things and then raise IncompleteResponseError, outputting no
+# information about which bytes hadn't been parsed yet. The code calling this
+# function would see only the IncompleteResponseError and discard the parsed
+# things. Even with that bugginess, this actually worked because every once in
+# a while there would be no bytes left from parsing things, and this function
+# would output parsed things with no error.
+#
+# The least error-prone fix I could think of is to pass the bytes to parse
+# as a mutable bytearray object, and just delete the used bytes from there.
+# This means that we no longer have any need for IncompleteResponseError, and
+# this function will return an empty list instead in that case.
+#
+# _parse_one_message returns None when there are no more messages, and an empty
+# iterator when a message was parsed but no things were created.
+def _parse_one_message(response_buf: bytearray) -> t.Optional[t.Iterable[t.Union[Response, Request]]]:
+    if b"\r\n\r\n" not in response_buf:
+        return None
 
-    header_lines, raw_content = response.split(b"\r\n\r\n", 1)
+    header_lines, raw_content = bytes(response_buf).split(b"\r\n\r\n", 1)
 
     # Many langservers don't set Content-Type header for whatever reason. We
     # use a sane default for that.
@@ -106,20 +128,27 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     # Content-Length
     content_length = int(headers["content-length"])
 
-    # We need to verify that the raw_content is long enough, seeing as we might
-    # be getting an incomplete request.
+    # We need to verify that the raw_content is long enough.
     if len(raw_content) < content_length:
-        raise IncompleteResponseError(
-            "Not enough bytes to fulfill Content-Length requirements.",
-            missing_bytes=content_length - len(raw_content),
-        )
+        # incomplete request
+        return None
 
     # Take only as many bytes as we need. If there's any remaining, they're
     # the next response's.
-    raw_content, next_response = (
-        raw_content[:content_length],
-        raw_content[content_length:],
-    )
+    raw_content = raw_content[:content_length]
+    unused_bytes_count = len(raw_content[content_length:])
+
+
+    # This is a good place for deleting unnecessary stuff from response_buf
+    # because if the code below fails, then leaving the cause of failure to
+    # response_buf would cause this function to fail every time in the future
+    # when called with the same response_buf. I think I've had this issue a
+    # long time ago, and it was annoying how one response parsing error would
+    # also block the parsing of any future responses.
+    if unused_bytes_count == 0:     # 'del response_buf[:-0]' does wrong thing
+        response_buf.clear()
+    else:
+        del response_buf[:-unused_bytes_count]
 
     def do_it(data: JSONDict) -> t.Union[Response, Request]:
         del data["jsonrpc"]
@@ -145,9 +174,14 @@ def _parse_messages(response: bytes) -> t.Iterator[t.Union[Response, Request]]:
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
         # This is in response to a batch operation.
-        yield from map(do_it, content)
+        return map(do_it, content)
     else:
-        yield do_it(content)
+        return [do_it(content)]
 
-    if next_response:
-        yield from _parse_messages(next_response)
+
+def _parse_messages(response_buf: bytearray) -> t.Iterator[t.Union[Response, Request]]:
+    while True:
+        parsed = _parse_one_message(response_buf)
+        if parsed is None:
+            break
+        yield from parsed
