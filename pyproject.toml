@@ -21,7 +21,7 @@ attrs = "^18.1"
 cattrs = "^0.9.0"
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.620.0"
+mypy = "^0.782.0"
 black = "^18.3-alpha.0"
 
 [tool.black]
