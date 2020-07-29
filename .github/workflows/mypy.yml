@@ -1,6 +1,6 @@
 # https://medium.com/@doedotdev/mypy-for-github-action-7da1ebee99e7
 name: Mypy
-on: [push]
+on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
