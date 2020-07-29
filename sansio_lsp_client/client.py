@@ -50,7 +50,7 @@ class Client:
         self,
         process_id: t.Optional[int] = None,
         root_uri: t.Optional[str] = None,
-        trace: str = "off"
+        trace: str = "off",
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
 
@@ -86,7 +86,9 @@ class Client:
     def state(self) -> ClientState:
         return self._state
 
-    def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
+    def _send_request(
+        self, method: str, params: t.Optional[JSONDict] = None
+    ) -> int:
         id = self._id_counter
         self._id_counter += 1
 
@@ -96,11 +98,16 @@ class Client:
         )
         return id
 
-    def _send_notification(self, method: str, params: t.Optional[JSONDict] = None) -> None:
+    def _send_notification(
+        self, method: str, params: t.Optional[JSONDict] = None
+    ) -> None:
         self._send_buf += _make_request(method=method, params=params)
 
     def _send_response(
-        self, id: int, result: t.Optional[JSONDict] = None, error: t.Optional[JSONDict] = None
+        self,
+        id: int,
+        result: t.Optional[JSONDict] = None,
+        error: t.Optional[JSONDict] = None,
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
@@ -170,9 +177,11 @@ class Client:
                         assert request.id is not None
                         event._id = request.id
                         event._client = self
-                        return t.cast('E', event)
+                        return t.cast("E", event)
                     elif issubclass(event_cls, ServerNotification):
-                        return t.cast('E', cattr.structure(request.params, event_cls))
+                        return t.cast(
+                            "E", cattr.structure(request.params, event_cls)
+                        )
                     else:
                         raise TypeError(
                             "`event_cls` must be a subclass of ServerRequest or ServerNotification"
@@ -264,7 +273,9 @@ class Client:
         )
 
     def did_save(
-        self, text_document: TextDocumentIdentifier, text: t.Optional[str] = None
+        self,
+        text_document: TextDocumentIdentifier,
+        text: t.Optional[str] = None,
     ) -> None:
         assert self._state == ClientState.NORMAL
         params = {"textDocument": cattr.unstructure(text_document)}
@@ -290,4 +301,5 @@ class Client:
         if context is not None:
             params.update(cattr.unstructure(context))
         return self._send_request(
-            method="textDocument/completion", params=params)
+            method="textDocument/completion", params=params
+        )

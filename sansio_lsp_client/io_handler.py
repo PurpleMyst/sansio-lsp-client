@@ -98,7 +98,9 @@ def _make_response(
 #
 # _parse_one_message returns None when there are no more messages, and an empty
 # iterator when a message was parsed but no things were created.
-def _parse_one_message(response_buf: bytearray) -> t.Optional[t.Iterable[t.Union[Response, Request]]]:
+def _parse_one_message(
+    response_buf: bytearray
+) -> t.Optional[t.Iterable[t.Union[Response, Request]]]:
     if b"\r\n\r\n" not in response_buf:
         return None
 
@@ -138,14 +140,13 @@ def _parse_one_message(response_buf: bytearray) -> t.Optional[t.Iterable[t.Union
     raw_content = raw_content[:content_length]
     unused_bytes_count = len(raw_content[content_length:])
 
-
     # This is a good place for deleting unnecessary stuff from response_buf
     # because if the code below fails, then leaving the cause of failure to
     # response_buf would cause this function to fail every time in the future
     # when called with the same response_buf. I think I've had this issue a
     # long time ago, and it was annoying how one response parsing error would
     # also block the parsing of any future responses.
-    if unused_bytes_count == 0:     # 'del response_buf[:-0]' does wrong thing
+    if unused_bytes_count == 0:  # 'del response_buf[:-0]' does wrong thing
         response_buf.clear()
     else:
         del response_buf[:-unused_bytes_count]
@@ -181,7 +182,9 @@ def _parse_one_message(response_buf: bytearray) -> t.Optional[t.Iterable[t.Union
         return [do_it(content)]
 
 
-def _parse_messages(response_buf: bytearray) -> t.Iterator[t.Union[Response, Request]]:
+def _parse_messages(
+    response_buf: bytearray
+) -> t.Iterator[t.Union[Response, Request]]:
     while True:
         parsed = _parse_one_message(response_buf)
         if parsed is None:

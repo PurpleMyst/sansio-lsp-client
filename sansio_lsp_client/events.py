@@ -24,7 +24,7 @@ class Event:
 
 @attrs
 class ServerRequest(Event):
-    _client: 'Client' = attrib(init=False)
+    _client: "Client" = attrib(init=False)
     _id: int = attrib(init=False)
 
 
