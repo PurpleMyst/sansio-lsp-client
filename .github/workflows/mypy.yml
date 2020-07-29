@@ -16,4 +16,4 @@ jobs:
         pip install poetry && poetry install
     - name: mypy
       run: |
-        python3 -m mypy --strict sansio_lsp_client
+        poetry run python3 -m mypy --strict sansio_lsp_client
