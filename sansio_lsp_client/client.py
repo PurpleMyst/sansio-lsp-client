@@ -47,7 +47,10 @@ class ClientState(enum.Enum):
 class Client:
     # TODO: Save the encoding given here.
     def __init__(
-        self, process_id: int = None, root_uri: str = None, trace: str = "off"
+        self,
+        process_id: t.Optional[int] = None,
+        root_uri: t.Optional[str] = None,
+        trace: str = "off"
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
 
@@ -80,10 +83,10 @@ class Client:
         self._state = ClientState.WAITING_FOR_INITIALIZED
 
     @property
-    def state(self):
+    def state(self) -> ClientState:
         return self._state
 
-    def _send_request(self, method: str, params: JSONDict = None) -> int:
+    def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
         id = self._id_counter
         self._id_counter += 1
 
@@ -93,11 +96,11 @@ class Client:
         )
         return id
 
-    def _send_notification(self, method: str, params: JSONDict = None) -> None:
+    def _send_notification(self, method: str, params: t.Optional[JSONDict] = None) -> None:
         self._send_buf += _make_request(method=method, params=params)
 
     def _send_response(
-        self, id: int, result: JSONDict = None, error: JSONDict = None
+        self, id: int, result: t.Optional[JSONDict] = None, error: t.Optional[JSONDict] = None
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
@@ -111,6 +114,7 @@ class Client:
         for message in messages:
             if isinstance(message, Response):
                 response = message
+                assert response.id is not None
                 request = self._unanswered_requests.pop(response.id)
 
                 # FIXME: The errors have meanings.
@@ -149,6 +153,7 @@ class Client:
 
                     events.append(Completion(response.id, completion_list))
                 elif request.method == "textDocument/willSaveWaitUntil":
+                    # FIXME: types don't match???
                     events.append(
                         WillSaveWaitUntilEdits(edits=response.result)
                     )
@@ -162,11 +167,12 @@ class Client:
                 def structure_request(event_cls: t.Type[E]) -> E:
                     if issubclass(event_cls, ServerRequest):
                         event = cattr.structure(request.params, event_cls)
+                        assert request.id is not None
                         event._id = request.id
                         event._client = self
-                        return event
+                        return t.cast('E', event)
                     elif issubclass(event_cls, ServerNotification):
-                        return cattr.structure(request.params, event_cls)
+                        return t.cast('E', cattr.structure(request.params, event_cls))
                     else:
                         raise TypeError(
                             "`event_cls` must be a subclass of ServerRequest or ServerNotification"
@@ -258,7 +264,7 @@ class Client:
         )
 
     def did_save(
-        self, text_document: TextDocumentIdentifier, text: str = None
+        self, text_document: TextDocumentIdentifier, text: t.Optional[str] = None
     ) -> None:
         assert self._state == ClientState.NORMAL
         params = {"textDocument": cattr.unstructure(text_document)}
@@ -276,7 +282,7 @@ class Client:
     def completions(
         self,
         text_document_position: TextDocumentPosition,
-        context: CompletionContext = None,
+        context: t.Optional[CompletionContext] = None,
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}

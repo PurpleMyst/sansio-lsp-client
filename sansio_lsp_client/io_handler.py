@@ -21,8 +21,8 @@ def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
 
 def _make_request(
     method: str,
-    params: JSONDict = None,
-    id: int = None,
+    params: t.Optional[JSONDict] = None,
+    id: t.Optional[int] = None,
     *,
     encoding: str = "utf-8",
 ) -> bytes:
@@ -49,8 +49,8 @@ def _make_request(
 
 def _make_response(
     id: int,
-    result: JSONDict = None,
-    error: JSONDict = None,
+    result: t.Optional[JSONDict] = None,
+    error: t.Optional[JSONDict] = None,
     *,
     encoding: str = "utf-8",
 ) -> bytes:
@@ -159,12 +159,14 @@ def _parse_one_message(response_buf: bytearray) -> t.Optional[t.Iterable[t.Union
         # filled in with None)
         try:
             request = cattr.structure(data, Request)
+            assert isinstance(request, Request)
             return request
         except TypeError:
             pass
 
         try:
             response = cattr.structure(data, Response)
+            assert isinstance(response, Response)
             return response
         except TypeError:
             pass
