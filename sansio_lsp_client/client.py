@@ -163,7 +163,9 @@ class Client:
                 elif request.method == "textDocument/willSaveWaitUntil":
                     # FIXME: types don't match???
                     events.append(
-                        WillSaveWaitUntilEdits(edits=t.cast(t.List[TextEdit], response.result))
+                        WillSaveWaitUntilEdits(
+                            edits=t.cast(t.List[TextEdit], response.result)
+                        )
                     )
                 else:
                     raise NotImplementedError((response, request))

@@ -99,7 +99,7 @@ def _make_response(
 # _parse_one_message returns None when there are no more messages, and an empty
 # iterator when a message was parsed but no things were created.
 def _parse_one_message(
-    response_buf: bytearray
+    response_buf: bytearray,
 ) -> t.Optional[t.Iterable[t.Union[Response, Request]]]:
     if b"\r\n\r\n" not in response_buf:
         return None
@@ -183,7 +183,7 @@ def _parse_one_message(
 
 
 def _parse_messages(
-    response_buf: bytearray
+    response_buf: bytearray,
 ) -> t.Iterator[t.Union[Response, Request]]:
     while True:
         parsed = _parse_one_message(response_buf)
