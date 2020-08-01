@@ -13,5 +13,5 @@ sed -i "s/__version__ = .*/__version__ = \"$version\"/" sansio_lsp_client/__init
 poetry version "$version"
 
 git add sansio_lsp_client/__init__.py pyproject.toml
-git commit -v
+git commit -v -m "chore: bump version"
 git tag "v$version"
