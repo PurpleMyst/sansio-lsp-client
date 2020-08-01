@@ -1,0 +1,19 @@
+# mostly copied from mypy.yml
+name: Black
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Black
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install Dependencies
+      run: |
+        pip install poetry && poetry install
+    - name: black
+      run: |
+        poetry run python3 -m black --check sansio_lsp_client

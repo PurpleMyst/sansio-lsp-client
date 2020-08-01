@@ -6,7 +6,6 @@ import socket
 import urllib.request
 
 from .client import Client
-from .errors import IncompleteResponseError
 from .events import Initialized, Shutdown, ShowMessageRequest, Completion
 from .structs import (
     CompletionTriggerKind,
@@ -36,14 +35,11 @@ def main() -> None:
     while True:
         sock.sendall(client.send())
 
-        try:
-            data = sock.recv(4096)
-            if not data:
-                break
-            events = list(client.recv(data))
-        except IncompleteResponseError as e:
-            continue
+        data = sock.recv(4096)
+        if not data:
+            break
 
+        events = list(client.recv(data))
         for event in events:
             if isinstance(event, Initialized):
                 print("Initialized!")
@@ -76,9 +72,16 @@ def main() -> None:
                 client.exit()
             elif isinstance(event, Completion):
                 print("Completions:")
-                pprint.pprint(
-                    [item.label for item in event.completion_list.items]
-                )
+                if event.completion_list is None:
+                    print("(None for whatever reason)")
+                elif isinstance(event.completion_list, list):
+                    pprint.pprint(
+                        [item.label for item in event.completion_list]
+                    )
+                else:
+                    pprint.pprint(
+                        [item.label for item in event.completion_list.items]
+                    )
 
                 client.did_close(
                     text_document=TextDocumentIdentifier(uri=file_uri)

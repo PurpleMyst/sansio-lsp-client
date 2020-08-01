@@ -3,6 +3,8 @@ import typing as t
 import attr
 from attr import attrs, attrib
 
+if t.TYPE_CHECKING:  # avoid import cycle at runtime
+    from .client import Client
 from .structs import (
     JSONDict,
     Diagnostic,
@@ -53,7 +55,7 @@ class ShowMessageRequest(ServerRequest):
     message: str = attrib()
     actions: t.Optional[t.List[MessageActionItem]] = attrib()
 
-    def reply(self, action: MessageActionItem = None) -> None:
+    def reply(self, action: t.Optional[MessageActionItem] = None) -> None:
         """
         Reply to the ShowMessageRequest with the user's selection.
 

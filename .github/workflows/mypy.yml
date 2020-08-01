@@ -1,0 +1,19 @@
+# https://medium.com/@doedotdev/mypy-for-github-action-7da1ebee99e7
+name: Mypy
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Mypy
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install Dependencies
+      run: |
+        pip install poetry && poetry install
+    - name: mypy
+      run: |
+        poetry run python3 -m mypy --strict sansio_lsp_client
