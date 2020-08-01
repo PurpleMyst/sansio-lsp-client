@@ -31,6 +31,7 @@ from .structs import (
     VersionedTextDocumentIdentifier,
     TextDocumentContentChangeEvent,
     TextDocumentSaveReason,
+    TextEdit,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -162,7 +163,7 @@ class Client:
                 elif request.method == "textDocument/willSaveWaitUntil":
                     # FIXME: types don't match???
                     events.append(
-                        WillSaveWaitUntilEdits(edits=response.result)
+                        WillSaveWaitUntilEdits(edits=t.cast(t.List[TextEdit], response.result))
                     )
                 else:
                     raise NotImplementedError((response, request))
