@@ -1,14 +1,12 @@
 import typing as t
 
-import attr
-from attr import attrs, attrib
+from pydantic import BaseModel, PrivateAttr
 
 if t.TYPE_CHECKING:  # avoid import cycle at runtime
     from .client import Client
 from .structs import (
     JSONDict,
     Diagnostic,
-    Range,
     MessageType,
     MessageActionItem,
     CompletionItem,
@@ -16,44 +14,39 @@ from .structs import (
     TextEdit,
 )
 
+Id = t.Union[int, str]
 
-@attrs
-class Event:
+
+class Event(BaseModel):
     pass
 
 
-@attrs
 class ServerRequest(Event):
-    _client: "Client" = attrib(init=False)
-    _id: int = attrib(init=False)
+    _client: "Client" = PrivateAttr()
+    _id: Id = PrivateAttr()
 
 
-@attrs
 class ServerNotification(Event):
     pass
 
 
-@attrs
 class Initialized(Event):
-    capabilities: JSONDict = attrib()
+    capabilities: JSONDict
 
 
-@attrs
 class Shutdown(Event):
     pass
 
 
-@attrs
 class ShowMessage(ServerNotification):
-    type: MessageType = attrib()
-    message: str = attrib()
+    type: MessageType
+    message: str
 
 
-@attrs
 class ShowMessageRequest(ServerRequest):
-    type: MessageType = attrib()
-    message: str = attrib()
-    actions: t.Optional[t.List[MessageActionItem]] = attrib()
+    type: MessageType
+    message: str
+    actions: t.Optional[t.List[MessageActionItem]]
 
     def reply(self, action: t.Optional[MessageActionItem] = None) -> None:
         """
@@ -61,30 +54,27 @@ class ShowMessageRequest(ServerRequest):
 
         No bytes are actually returned from this method, the reply's bytes are added to the client's internal send buffer.
         """
-        self._client._send_response(id=self._id, result=attr.asdict(action))
+        self._client._send_response(
+            id=self._id, result=action.dict() if action is not None else None
+        )
 
 
-@attrs
 class LogMessage(ServerNotification):
-    type: MessageType = attrib()
-    message: str = attrib()
+    type: MessageType
+    message: str
 
 
-@attrs
-class Completion:
-    message_id: int = attrib()
-    completion_list: t.Union[
-        CompletionList, t.List[CompletionItem], None
-    ] = attrib()
+# XXX: should these two be just Events or?
+class Completion(Event):
+    message_id: Id
+    completion_list: t.Union[CompletionList, t.List[CompletionItem], None]
 
 
 # XXX: not sure how to name this event.
-@attrs
-class WillSaveWaitUntilEdits:
-    edits: t.Optional[t.List[TextEdit]] = attrib(default=None)
+class WillSaveWaitUntilEdits(Event):
+    edits: t.Optional[t.List[TextEdit]]
 
 
-@attrs
 class PublishDiagnostics(ServerNotification):
-    uri: str = attrib()
-    diagnostics: t.List[Diagnostic] = attrib()
+    uri: str
+    diagnostics: t.List[Diagnostic]

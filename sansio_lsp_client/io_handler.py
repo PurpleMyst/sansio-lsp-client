@@ -2,8 +2,6 @@ import cgi
 import json
 import typing as t
 
-import cattr
-
 from .structs import Request, Response, JSONDict
 
 
@@ -159,14 +157,14 @@ def _parse_one_message(
         # that is, any Request is also a valid Response (everything just gets
         # filled in with None)
         try:
-            request = cattr.structure(data, Request)
+            request = Request.parse_obj(data)
             assert isinstance(request, Request)
             return request
         except TypeError:
             pass
 
         try:
-            response = cattr.structure(data, Response)
+            response = Response.parse_obj(data)
             assert isinstance(response, Response)
             return response
         except TypeError:

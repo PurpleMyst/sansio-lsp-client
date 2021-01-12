@@ -1,32 +1,28 @@
 import enum
 import typing as t
 
-from attr import attrs, attrib
+from pydantic import BaseModel
 
 # XXX: Replace the non-commented-out code with what's commented out once nested
 # types become a thing in mypy.
-# JSONValue = t.Union[None, str, int, t.List['JSONValue'], t.Dict[str, 'JSONValue']]
+# JSONValue = t.Union[None, str, int,
+#                     t.List['JSONValue'], t.Dict[str, 'JSONValue']]
 # JSONDict = t.Dict[str, JSONValue]
 JSONDict = t.Dict[str, t.Any]
 
-# XXX: We can't have this be both str and int due to `cattrs` restrictions. How
-# can we fix this?
-# Id = t.Union[str, int]
-Id = int
+Id = t.Union[int, str]
 
 
-@attrs
-class Request:
-    method: str = attrib()
-    id: t.Optional[Id] = attrib(default=None)
-    params: t.Optional[JSONDict] = attrib(default=None)
+class Request(BaseModel):
+    method: str
+    id: t.Optional[Id]
+    params: t.Optional[JSONDict]
 
 
-@attrs
-class Response:
-    id: t.Optional[Id] = attrib(default=None)
-    result: t.Optional[JSONDict] = attrib(default=None)
-    error: t.Optional[JSONDict] = attrib(default=None)
+class Response(BaseModel):
+    id: t.Optional[Id]
+    result: t.Optional[JSONDict]
+    error: t.Optional[JSONDict]
 
 
 class MessageType(enum.IntEnum):
@@ -36,40 +32,34 @@ class MessageType(enum.IntEnum):
     LOG = 4
 
 
-@attrs
-class MessageActionItem:
-    title: str = attrib()
+class MessageActionItem(BaseModel):
+    title: str
 
 
-@attrs
-class TextDocumentItem:
-    uri: str = attrib()
-    languageId: str = attrib()
-    version: int = attrib()
-    text: str = attrib()
+class TextDocumentItem(BaseModel):
+    uri: str
+    languageId: str
+    version: int
+    text: str
 
 
-@attrs
-class TextDocumentIdentifier:
-    uri: str = attrib()
+class TextDocumentIdentifier(BaseModel):
+    uri: str
 
 
-@attrs
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
-    version: t.Optional[int] = attrib(default=None)
+    version: t.Optional[int]
 
 
-@attrs
-class Position:
+class Position(BaseModel):
     # NB: These are both zero-based.
-    line: int = attrib()
-    character: int = attrib()
+    line: int
+    character: int
 
 
-@attrs
-class Range:
-    start: Position = attrib()
-    end: Position = attrib()
+class Range(BaseModel):
+    start: Position
+    end: Position
 
     def calculate_length(self, text: str) -> int:
         text_lines = text.splitlines()
@@ -90,11 +80,10 @@ class Range:
             return total
 
 
-@attrs
-class TextDocumentContentChangeEvent:
-    text: str = attrib()
-    range: t.Optional[Range] = attrib(default=None)
-    rangeLength: t.Optional[int] = attrib(default=None)
+class TextDocumentContentChangeEvent(BaseModel):
+    text: str
+    range: t.Optional[Range]
+    rangeLength: t.Optional[int]
 
     @classmethod
     def change_range(
@@ -107,11 +96,13 @@ class TextDocumentContentChangeEvent:
         """
         Create a TextDocumentContentChangeEvent reflecting the given changes.
 
-        Nota bene: If you're creating a list of TextDocumentContentChangeEvent based on many changes,
-        `old_text` must reflect the state of the text after all previous change events happened.
-        Or you can just use `sansio_lsp_client.utils.calculate_change_events`.
+        Nota bene: If you're creating a list of
+        TextDocumentContentChangeEvent based on many changes, `old_text` must
+        reflect the state of the text after all previous change events
+        happened. Or you can just use
+        `sansio_lsp_client.utils.calculate_change_events`.
         """
-        change_range = Range(change_start, change_end)
+        change_range = Range(start=change_start, end=change_end)
         return cls(
             range=change_range,
             rangeLength=change_range.calculate_length(old_text),
@@ -125,10 +116,9 @@ class TextDocumentContentChangeEvent:
         return cls(text=change_text)
 
 
-@attrs
-class TextDocumentPosition:
-    textDocument: TextDocumentIdentifier = attrib()
-    position: Position = attrib()
+class TextDocumentPosition(BaseModel):
+    textDocument: TextDocumentIdentifier
+    position: Position
 
 
 class CompletionTriggerKind(enum.IntEnum):
@@ -137,10 +127,9 @@ class CompletionTriggerKind(enum.IntEnum):
     TRIGGER_FOR_INCOMPLETE_COMPLETIONS = 3
 
 
-@attrs
-class CompletionContext:
-    triggerKind: CompletionTriggerKind = attrib()
-    triggerCharacter: t.Optional[str] = attrib(default=None)
+class CompletionContext(BaseModel):
+    triggerKind: CompletionTriggerKind
+    triggerCharacter: t.Optional[str]
 
 
 class MarkupKind(enum.Enum):
@@ -148,23 +137,20 @@ class MarkupKind(enum.Enum):
     MARKDOWN = "markdown"
 
 
-@attrs
-class MarkupContent:
-    kind: MarkupKind = attrib()
-    value: str = attrib()
+class MarkupContent(BaseModel):
+    kind: MarkupKind
+    value: str
 
 
-@attrs
-class TextEdit:
-    range: Range = attrib()
-    newText: str = attrib()
+class TextEdit(BaseModel):
+    range: Range
+    newText: str
 
 
-@attrs
-class Command:
-    title: str = attrib()
-    command: str = attrib()
-    arguments: t.Optional[t.List[t.Any]] = attrib(default=None)
+class Command(BaseModel):
+    title: str
+    command: str
+    arguments: t.Optional[t.List[t.Any]]
 
 
 class InsertTextFormat(enum.IntEnum):
@@ -172,32 +158,29 @@ class InsertTextFormat(enum.IntEnum):
     SNIPPET = 2
 
 
-@attrs
-class CompletionItem:
-    label: str = attrib()
+class CompletionItem(BaseModel):
+    label: str
     # TODO: implement CompletionItemKind.
-    kind: t.Optional[int] = attrib(default=None)
-    detail: t.Optional[str] = attrib(default=None)
-    # FIXME: Allow `t.Union[str, MarkupContent]` here by defining a cattrs
-    # custom loads hook.
-    documentation: t.Optional[str] = attrib(default=None)
-    deprecated: t.Optional[bool] = attrib(default=None)
-    preselect: t.Optional[bool] = attrib(default=None)
-    sortText: t.Optional[str] = attrib(default=None)
-    filterText: t.Optional[str] = attrib(default=None)
-    insertText: t.Optional[str] = attrib(default=None)
-    insertTextFormat: t.Optional[InsertTextFormat] = attrib(default=None)
-    textEdit: t.Optional[TextEdit] = attrib(default=None)
-    additionalTextEdits: t.Optional[t.List[TextEdit]] = attrib(default=None)
-    commitCharacters: t.Optional[t.List[str]] = attrib(default=None)
-    command: t.Optional[Command] = attrib(default=None)
-    data: t.Optional[t.Any] = attrib(default=None)
+    kind: t.Optional[int]
+    detail: t.Optional[str]
+    # FIXME: Allow `t.Union[str, MarkupContent]` here
+    documentation: t.Optional[str]
+    deprecated: t.Optional[bool]
+    preselect: t.Optional[bool]
+    sortText: t.Optional[str]
+    filterText: t.Optional[str]
+    insertText: t.Optional[str]
+    insertTextFormat: t.Optional[InsertTextFormat]
+    textEdit: t.Optional[TextEdit]
+    additionalTextEdits: t.Optional[t.List[TextEdit]]
+    commitCharacters: t.Optional[t.List[str]]
+    command: t.Optional[Command]
+    data: t.Optional[t.Any]
 
 
-@attrs
-class CompletionList:
-    isIncomplete: bool = attrib()
-    items: t.List[CompletionItem] = attrib()
+class CompletionList(BaseModel):
+    isIncomplete: bool
+    items: t.List[CompletionItem]
 
 
 class TextDocumentSaveReason(enum.IntEnum):
@@ -206,16 +189,14 @@ class TextDocumentSaveReason(enum.IntEnum):
     FOCUS_OUT = 3
 
 
-@attrs
-class Location:
-    uri: str = attrib()
-    range: Range = attrib()
+class Location(BaseModel):
+    uri: str
+    range: Range
 
 
-@attrs
-class DiagnosticRelatedInformation:
-    location: Location = attrib()
-    message: str = attrib()
+class DiagnosticRelatedInformation(BaseModel):
+    location: Location
+    message: str
 
 
 class DiagnosticSeverity(enum.IntEnum):
@@ -225,20 +206,18 @@ class DiagnosticSeverity(enum.IntEnum):
     HINT = 4
 
 
-@attrs
-class Diagnostic:
-    range: Range = attrib()
+class Diagnostic(BaseModel):
+    range: Range
 
     # TODO: Make this a proper enum
-    severity: DiagnosticSeverity = attrib(default=None)
+    # XXX: ^ Is this comment still relevant?
+    severity: DiagnosticSeverity
 
     # TODO: Support this as an union of str and int
-    code: t.Optional[t.Any] = attrib(default=None)
+    code: t.Optional[t.Any]
 
-    source: t.Optional[str] = attrib(default=None)
+    source: t.Optional[str]
 
-    message: t.Optional[str] = attrib(default=None)
+    message: t.Optional[str]
 
-    relatedInformation: t.Optional[
-        t.List[DiagnosticRelatedInformation]
-    ] = attrib(default=None)
+    relatedInformation: t.Optional[t.List[DiagnosticRelatedInformation]]
