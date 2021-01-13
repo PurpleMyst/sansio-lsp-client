@@ -150,8 +150,7 @@ class Client:
                     assert response.result is None
 
             event = Completion(
-                message_id=response.id,
-                completion_list=completion_list,
+                message_id=response.id, completion_list=completion_list
             )
 
         elif request.method == "textDocument/willSaveWaitUntil":
