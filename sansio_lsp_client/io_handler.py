@@ -155,7 +155,9 @@ def _parse_one_message(
         data: JSONDict,
     ) -> t.Union[Request, Response]:
         del data["jsonrpc"]
-        return parse_obj_as(t.Union[Request, Response], data)  # type: ignore[arg-type]
+        return parse_obj_as(
+            t.Union[Request, Response], data
+        )  # type: ignore[arg-type]
 
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
