@@ -1,5 +1,6 @@
 import contextlib
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -30,9 +31,7 @@ def run_langserver(project_root, command):
         yield (lsp_client, make_event_iterator())
 
 
-def do_stuff_with_a_langserver(
-    tmp_path, filename, file_content, command, cwd=None
-):
+def do_stuff_with_a_langserver(tmp_path, filename, file_content, command):
     path = tmp_path / filename
     path.write_text(file_content)
 
@@ -101,12 +100,16 @@ do_""",
     ]
 
 
-jstsls_path = pathlib.Path(__name__).absolute().parent / "jsts-langserver"
+test_langservers = (
+    pathlib.Path(__name__).absolute().parent / "test_langservers"
+)
 
 
 @pytest.mark.skipif(
-    not jstsls_path.exists(),
-    reason=f"javascript-typescript-langserver not installed into {jstsls_path}",
+    not (
+        test_langservers / "node_modules/.bin/javascript-typescript-stdio"
+    ).exists(),
+    reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(
     shutil.which("node") is None, reason="node not found in $PATH"
@@ -116,17 +119,47 @@ def test_javascript_typescript_langserver(tmp_path):
         tmp_path,
         "foo.js",
         """\
-const blah = require("asdf");
-function doSomethingWithFoo() {
-}
-function doSomethingWithBar() {
+function doSomethingWithFoo(x, y) {
+    const blah = x + y;
+    return asdf asdf;
 }
 
 doS""",
-        [jstsls_path / "node_modules/.bin/javascript-typescript-stdio"],
+        [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
     )
-    assert not diagnostics.diagnostics
-    assert [item.label for item in completions.completion_list.items[:2]] == [
-        "doSomethingWithFoo",
-        "doSomethingWithBar",
+    assert [diag.message for diag in diagnostics.diagnostics] == [
+        "';' expected."
     ]
+    assert "doSomethingWithFoo" in [
+        item.label for item in completions.completion_list.items
+    ]
+
+
+@pytest.mark.xfail
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="don't know how clangd works on windows",
+)
+@pytest.mark.skipif(
+    not list(test_langservers.glob("clangd_*")), reason="clangd not found"
+)
+def test_clangd(tmp_path):
+    diagnostics, completions = do_stuff_with_a_langserver(
+        tmp_path,
+        "foo.c",
+        """\
+#include <stdio.h>
+void do_foo(void) {
+}
+int do_bar(char x, long y) {
+    short z = x + y;
+}
+
+do_""",
+        [next(test_langservers.glob("clangd_*")) / "bin" / "clangd"],
+    )
+    # TODO
+
+
+#    assert diagnostics.diagnostics == [...]
+#    assert [item.label for item in completions.completion_list.items] == [...]
