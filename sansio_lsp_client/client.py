@@ -24,7 +24,6 @@ from .structs import (
     CompletionItem,
     Request,
     JSONDict,
-    MessageType,
     TextDocumentItem,
     TextDocumentIdentifier,
     VersionedTextDocumentIdentifier,
@@ -165,10 +164,11 @@ class Client:
                         )
                     )
                 elif request.method == "textDocument/willSaveWaitUntil":
-                    # FIXME: types don't match???
                     events.append(
                         WillSaveWaitUntilEdits(
-                            edits=t.cast(t.List[TextEdit], response.result)
+                            edits=parse_obj_as(
+                                t.List[TextEdit], response.result
+                            )
                         )
                     )
                 else:
