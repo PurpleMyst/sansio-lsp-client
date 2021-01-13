@@ -23,7 +23,7 @@ pydantic = "^1.7.3"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790.0"
-black = "^18.3-alpha.0"
+black = "18.9b0"
 python-language-server = {extras = ["all"], version = "^0.36.2"}
 pytest = "5.4.3"
 
