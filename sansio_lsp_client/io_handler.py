@@ -2,7 +2,7 @@ import cgi
 import json
 import typing as t
 
-import cattr
+from pydantic import parse_obj_as
 
 from .structs import Request, Response, JSONDict
 
@@ -100,7 +100,7 @@ def _make_response(
 # iterator when a message was parsed but no things were created.
 def _parse_one_message(
     response_buf: bytearray,
-) -> t.Optional[t.Iterable[t.Union[Response, Request]]]:
+) -> t.Optional[t.Iterable[t.Union[Request, Response]]]:
     if b"\r\n\r\n" not in response_buf:
         return None
 
@@ -151,35 +151,18 @@ def _parse_one_message(
     else:
         del response_buf[:-unused_bytes_count]
 
-    def do_it(data: JSONDict) -> t.Union[Response, Request]:
+    def parse_request_or_response(
+        data: JSONDict,
+    ) -> t.Union[Request, Response]:
         del data["jsonrpc"]
-
-        # Request must come first because it has a non-optional attrib
-        #
-        # that is, any Request is also a valid Response (everything just gets
-        # filled in with None)
-        try:
-            request = cattr.structure(data, Request)
-            assert isinstance(request, Request)
-            return request
-        except TypeError:
-            pass
-
-        try:
-            response = cattr.structure(data, Response)
-            assert isinstance(response, Response)
-            return response
-        except TypeError:
-            pass
-
-        raise RuntimeError(f"{data!r} is neither a Request nor a Response!")
+        return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
 
     content = json.loads(raw_content.decode(encoding))
     if isinstance(content, list):
         # This is in response to a batch operation.
-        return map(do_it, content)
+        return map(parse_request_or_response, content)
     else:
-        return [do_it(content)]
+        return [parse_request_or_response(content)]
 
 
 def _parse_messages(
