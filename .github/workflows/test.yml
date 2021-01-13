@@ -12,8 +12,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - run: |
         pip install poetry && poetry install
-    # TODO: use poetry for installing test dependencies
+    # TODO: use poetry properly
     - run: |
-        pip install "python-language-server[all]" pytest
+        poetry install "python-language-server[all]" pytest
     - run: |
-        pytest -v tests.py
+        poetry run pytest -v tests.py
