@@ -20,7 +20,7 @@ jobs:
     - shell: bash
       run: |
         cd test_langservers
-        for version in 10.0.0 11.0.0; do
+        for VERSION in 10.0.0 11.0.0; do
           wget "https://github.com/clangd/clangd/releases/download/$VERSION/clangd-linux-$VERSION.zip"
           python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
           chmod +x clangd_$VERSION/bin/clangd
