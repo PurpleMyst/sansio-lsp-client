@@ -52,7 +52,8 @@ class ShowMessageRequest(ServerRequest):
         """
         Reply to the ShowMessageRequest with the user's selection.
 
-        No bytes are actually returned from this method, the reply's bytes are added to the client's internal send buffer.
+        No bytes are actually returned from this method, the reply's bytes
+        are added to the client's internal send buffer.
         """
         self._client._send_response(
             id=self._id, result=action.dict() if action is not None else None

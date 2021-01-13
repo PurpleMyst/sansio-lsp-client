@@ -111,6 +111,86 @@ class Client:
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
+    def _handle_response(self, response: Response) -> Event:
+        assert response.id is not None
+        request = self._unanswered_requests.pop(response.id)
+
+        # FIXME: The errors have meanings.
+        if response.error is not None:
+            __import__("pprint").pprint(response.error)
+            raise RuntimeError("Response error!")
+
+        event: Event
+
+        if request.method == "initialize":
+            assert self._state == ClientState.WAITING_FOR_INITIALIZED
+            self._send_notification("initialized")
+            event = Initialized.parse_obj(response.result)
+            self._state = ClientState.NORMAL
+
+        elif request.method == "shutdown":
+            assert self._state == ClientState.WAITING_FOR_SHUTDOWN
+            event = Shutdown()
+            self._state = ClientState.SHUTDOWN
+
+        elif request.method == "textDocument/completion":
+            completion_list = None
+
+            try:
+                completion_list = CompletionList.parse_obj(response.result)
+            except TypeError:
+                try:
+                    completion_list = CompletionList(
+                        isIncomplete=False,
+                        items=parse_obj_as(
+                            t.List[CompletionItem], response.result
+                        ),
+                    )
+                except TypeError:
+                    assert response.result is None
+
+            event = Completion(
+                message_id=response.id,
+                completion_list=completion_list,
+            )
+
+        elif request.method == "textDocument/willSaveWaitUntil":
+            event = WillSaveWaitUntilEdits(
+                edits=parse_obj_as(t.List[TextEdit], response.result)
+            )
+
+        else:
+            raise NotImplementedError((response, request))
+
+        return event
+
+    def _handle_request(self, request: Request) -> Event:
+        def parse_request(event_cls: t.Type[Event]) -> Event:
+            if issubclass(event_cls, ServerRequest):
+                event = parse_obj_as(event_cls, request.params)
+                assert request.id is not None
+                event._id = request.id
+                event._client = self
+                return event
+            elif issubclass(event_cls, ServerNotification):
+                return parse_obj_as(event_cls, request.params)
+            else:
+                raise TypeError(
+                    "`event_cls` must be a subclass of ServerRequest"
+                    " or ServerNotification"
+                )
+
+        if request.method == "window/showMessage":
+            return parse_request(ShowMessage)
+        elif request.method == "window/showMessageRequest":
+            return parse_request(ShowMessageRequest)
+        elif request.method == "window/logMessage":
+            return parse_request(LogMessage)
+        elif request.method == "textDocument/publishDiagnostics":
+            return parse_request(PublishDiagnostics)
+        else:
+            raise NotImplementedError(request)
+
     def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
 
@@ -118,93 +198,11 @@ class Client:
         messages = list(_parse_messages(self._recv_buf))
 
         events: t.List[Event] = []
-
         for message in messages:
             if isinstance(message, Response):
-                response = message
-                assert response.id is not None
-                request = self._unanswered_requests.pop(response.id)
-
-                # FIXME: The errors have meanings.
-                if response.error is not None:
-                    __import__("pprint").pprint(response.error)
-                    raise RuntimeError("Response error!")
-
-                if request.method == "initialize":
-                    assert self._state == ClientState.WAITING_FOR_INITIALIZED
-                    self._send_notification("initialized")
-                    events.append(Initialized.parse_obj(response.result))
-                    self._state = ClientState.NORMAL
-                elif request.method == "shutdown":
-                    assert self._state == ClientState.WAITING_FOR_SHUTDOWN
-                    events.append(Shutdown())
-                    self._state = ClientState.SHUTDOWN
-                elif request.method == "textDocument/completion":
-                    completion_list = None
-
-                    try:
-                        completion_list = CompletionList.parse_obj(
-                            response.result
-                        )
-                    except TypeError:
-                        try:
-                            completion_list = CompletionList(
-                                isIncomplete=False,
-                                items=parse_obj_as(
-                                    t.List[CompletionItem], response.result
-                                ),
-                            )
-                        except TypeError:
-                            assert response.result is None
-
-                    events.append(
-                        Completion(
-                            message_id=response.id,
-                            completion_list=completion_list,
-                        )
-                    )
-                elif request.method == "textDocument/willSaveWaitUntil":
-                    events.append(
-                        WillSaveWaitUntilEdits(
-                            edits=parse_obj_as(
-                                t.List[TextEdit], response.result
-                            )
-                        )
-                    )
-                else:
-                    raise NotImplementedError((response, request))
+                events.append(self._handle_response(message))
             elif isinstance(message, Request):
-                request = message
-
-                E = t.TypeVar("E", bound=Event)
-
-                def structure_request(event_cls: t.Type[E]) -> E:
-                    if issubclass(event_cls, ServerRequest):
-                        event = parse_obj_as(event_cls, request.params)
-                        assert request.id is not None
-                        event._id = request.id
-                        event._client = self
-                        return t.cast("E", event)
-                    elif issubclass(event_cls, ServerNotification):
-                        return t.cast(
-                            "E", parse_obj_as(event_cls, request.params)
-                        )
-                    else:
-                        raise TypeError(
-                            "`event_cls` must be a subclass of ServerRequest"
-                            " or ServerNotification"
-                        )
-
-                if request.method == "window/showMessage":
-                    events.append(structure_request(ShowMessage))
-                elif request.method == "window/showMessageRequest":
-                    events.append(structure_request(ShowMessageRequest))
-                elif request.method == "window/logMessage":
-                    events.append(structure_request(LogMessage))
-                elif request.method == "textDocument/publishDiagnostics":
-                    events.append(structure_request(PublishDiagnostics))
-                else:
-                    raise NotImplementedError(request)
+                events.append(self._handle_request(message))
             else:
                 raise RuntimeError("nobody will ever see this, i hope")
 
