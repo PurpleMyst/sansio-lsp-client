@@ -18,7 +18,12 @@ jobs:
     - run: |
         cd test_langservers && npm install javascript-typescript-langserver
     - run: |
-        cd test_langservers && wget 'https://github.com/clangd/clangd/releases/download/11.0.0/clangd-linux-11.0.0.zip' && python3 -m zipfile -e clangd-linux-*.zip . && chmod +x clangd_*/bin/clangd
+        cd test_langservers
+        for version in 10.0.0 11.0.0; do
+          wget "https://github.com/clangd/clangd/releases/download/$VERSION/clangd-linux-$VERSION.zip"
+          python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
+          chmod +x clangd_$VERSION/bin/clangd
+        done
     - run: |
         pip install poetry && poetry install
     - run: |

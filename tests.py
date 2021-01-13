@@ -135,19 +135,22 @@ doS""",
     ]
 
 
-@pytest.mark.xfail
-@pytest.mark.skipif(
-    platform.system() == "Windows",
-    reason="don't know how clangd works on windows",
-)
-@pytest.mark.skipif(
-    not list(test_langservers.glob("clangd_*")), reason="clangd not found"
-)
-def test_clangd(tmp_path):
-    diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        "foo.c",
-        """\
+def clangd_decorator(version):
+    def inner(function):
+        function = pytest.mark.skipif(
+            platform.system() == "Windows",
+            reason="don't know how clangd works on windows",
+        )(function)
+        function = pytest.mark.skipif(
+            not list(test_langservers.glob(f"clangd_{version}.*")),
+            reason=f"clangd {version} not found",
+        )(function)
+        return function
+
+    return inner
+
+
+c_code = """\
 #include <stdio.h>
 void do_foo(void) {
 }
@@ -155,8 +158,33 @@ int do_bar(char x, long y) {
     short z = x + y;
 }
 
-do_""",
-        [next(test_langservers.glob("clangd_*")) / "bin" / "clangd"],
+do_"""
+
+
+@clangd_decorator(10)
+def test_clangd_10(tmp_path):
+    diagnostics, completions = do_stuff_with_a_langserver(
+        tmp_path,
+        "foo.c",
+        c_code,
+        [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
+    )
+    assert [diag.message for diag in diagnostics.diagnostics] == [
+        "Non-void function does not return a value",
+        "Unknown type name 'do_'",
+        "Expected identifier or '('",
+    ]
+    # TODO: why does do_bar not show up in completions?
+
+
+@pytest.mark.xfail
+@clangd_decorator(11)
+def test_clangd_11(tmp_path):
+    diagnostics, completions = do_stuff_with_a_langserver(
+        tmp_path,
+        "foo.c",
+        c_code,
+        [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
     )
     # TODO
     # assert diagnostics.diagnostics == [...]
