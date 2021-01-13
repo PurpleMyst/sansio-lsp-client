@@ -24,6 +24,8 @@ cattrs = "^0.9.0"
 [tool.poetry.dev-dependencies]
 mypy = "^0.782.0"
 black = "^18.3-alpha.0"
+python-language-server = {extras = ["all"], version = "^0.36.2"}
+pytest = "5.4.3"
 
 [tool.black]
 line-length = 79
