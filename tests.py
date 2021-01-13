@@ -1,5 +1,5 @@
 import contextlib
-import shutil
+import pathlib
 import subprocess
 import sys
 
@@ -83,9 +83,14 @@ do_""",
         ]
 
 
-@pytest.mark.skipif(shutil.which("npm") is None, reason="npm not installed")
+jstsls_path = pathlib.Path(__name__).absolute().parent / 'jsts-langserver'
+
+
+@pytest.mark.skipif(
+    not jstsls_path.exists(),
+    reason=f"javascript-typescript-langserver not installed into {jstsls_path}"
+)
 def test_javascript_typescript_langserver(tmp_path):
-    subprocess.call(["npm", "install", "javascript-typescript-langserver"], cwd=tmp_path)
     foo_path = tmp_path / "foo.js"
     foo_path.write_text("""\
 const blah = require("asdf");
@@ -97,7 +102,7 @@ function doSomethingWithBar() {
 doS""")
 
     with run_stdio_langserver(
-        tmp_path, 'node_modules/.bin/javascript-typescript-stdio', cwd=tmp_path
+        tmp_path, [jstsls_path / 'node_modules' / '.bin' / 'javascript-typescript-stdio'], cwd=tmp_path
     ) as (lsp_client, event_iter):
         inited = next(event_iter)
         assert isinstance(inited, lsp.Initialized)
