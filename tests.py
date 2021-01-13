@@ -1,14 +1,17 @@
 import contextlib
+import shutil
 import subprocess
 import sys
+
+import pytest
 
 import sansio_lsp_client as lsp
 
 
 @contextlib.contextmanager
-def run_stdio_langserver(project_root, command):
+def run_stdio_langserver(project_root, command, **popen_kwargs):
     with subprocess.Popen(
-        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, **popen_kwargs
     ) as process:
         lsp_client = lsp.Client(
             trace="verbose", root_uri=project_root.as_uri()
@@ -77,4 +80,53 @@ do_""",
         assert [item.label for item in completion.completion_list.items] == [
             "do_bar()",
             "do_foo()",
+        ]
+
+
+@pytest.mark.skipif(shutil.which("npm") is None, reason="npm not installed")
+def test_javascript_typescript_langserver(tmp_path):
+    subprocess.call(["npm", "install", "javascript-typescript-langserver"], cwd=tmp_path)
+    foo_path = tmp_path / "foo.js"
+    foo_path.write_text("""\
+const blah = require("asdf");
+function doSomethingWithFoo() {
+}
+function doSomethingWithBar() {
+}
+
+doS""")
+
+    with run_stdio_langserver(
+        tmp_path, 'node_modules/.bin/javascript-typescript-stdio', cwd=tmp_path
+    ) as (lsp_client, event_iter):
+        inited = next(event_iter)
+        assert isinstance(inited, lsp.Initialized)
+        lsp_client.did_open(
+            lsp.TextDocumentItem(
+                uri=foo_path.as_uri(),
+                languageId="javascript",
+                text=foo_path.read_text(),
+                version=0,
+            )
+        )
+
+        diagnostics = next(event_iter)
+        assert isinstance(diagnostics, lsp.PublishDiagnostics)
+        assert diagnostics.uri == foo_path.as_uri()
+        assert [diag.message for diag in diagnostics.diagnostics] == []
+
+        event_id = lsp_client.completions(
+            text_document_position=lsp.TextDocumentPosition(
+                textDocument=lsp.TextDocumentIdentifier(uri=foo_path.as_uri()),
+                position=lsp.Position(line=6, character=3),
+            ),
+            context=lsp.CompletionContext(
+                triggerKind=lsp.CompletionTriggerKind.INVOKED
+            ),
+        )
+        completion = next(event_iter)
+        assert completion.message_id == event_id
+        assert [item.label for item in completion.completion_list.items[:2]] == [
+            "doSomethingWithFoo",
+            "doSomethingWithBar",
         ]
