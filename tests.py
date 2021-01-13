@@ -159,7 +159,5 @@ do_""",
         [next(test_langservers.glob("clangd_*")) / "bin" / "clangd"],
     )
     # TODO
-
-
-#    assert diagnostics.diagnostics == [...]
-#    assert [item.label for item in completions.completion_list.items] == [...]
+    # assert diagnostics.diagnostics == [...]
+    # assert [item.label for item in completions.completion_list.items] == [...]
