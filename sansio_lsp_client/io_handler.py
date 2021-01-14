@@ -37,9 +37,7 @@ def _make_request(
     encoded_content = json.dumps(content).encode(encoding)
 
     # Write the headers to the request body
-    request += _make_headers(
-        content_length=len(encoded_content), encoding=encoding
-    )
+    request += _make_headers(content_length=len(encoded_content), encoding=encoding)
 
     # Append the content to the request
     request += encoded_content
@@ -65,9 +63,7 @@ def _make_response(
     encoded_content = json.dumps(content).encode(encoding)
 
     # Write the headers to the request body
-    request += _make_headers(
-        content_length=len(encoded_content), encoding=encoding
-    )
+    request += _make_headers(content_length=len(encoded_content), encoding=encoding)
 
     # Append the content to the request
     request += encoded_content
@@ -151,9 +147,7 @@ def _parse_one_message(
     else:
         del response_buf[:-unused_bytes_count]
 
-    def parse_request_or_response(
-        data: JSONDict,
-    ) -> t.Union[Request, Response]:
+    def parse_request_or_response(data: JSONDict,) -> t.Union[Request, Response]:
         del data["jsonrpc"]
         return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
 
@@ -165,9 +159,7 @@ def _parse_one_message(
         return [parse_request_or_response(content)]
 
 
-def _parse_messages(
-    response_buf: bytearray,
-) -> t.Iterator[t.Union[Response, Request]]:
+def _parse_messages(response_buf: bytearray,) -> t.Iterator[t.Union[Response, Request]]:
     while True:
         parsed = _parse_one_message(response_buf)
         if parsed is None:

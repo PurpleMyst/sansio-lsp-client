@@ -86,16 +86,12 @@ class Client:
     def state(self) -> ClientState:
         return self._state
 
-    def _send_request(
-        self, method: str, params: t.Optional[JSONDict] = None
-    ) -> int:
+    def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
         id = self._id_counter
         self._id_counter += 1
 
         self._send_buf += _make_request(method=method, params=params, id=id)
-        self._unanswered_requests[id] = Request(
-            id=id, method=method, params=params
-        )
+        self._unanswered_requests[id] = Request(id=id, method=method, params=params)
         return id
 
     def _send_notification(
@@ -142,16 +138,12 @@ class Client:
                 try:
                     completion_list = CompletionList(
                         isIncomplete=False,
-                        items=parse_obj_as(
-                            t.List[CompletionItem], response.result
-                        ),
+                        items=parse_obj_as(t.List[CompletionItem], response.result),
                     )
                 except ValidationError:
                     assert response.result is None
 
-            event = Completion(
-                message_id=response.id, completion_list=completion_list
-            )
+            event = Completion(message_id=response.id, completion_list=completion_list)
 
         elif request.method == "textDocument/willSaveWaitUntil":
             event = WillSaveWaitUntilEdits(
@@ -230,8 +222,7 @@ class Client:
     def did_open(self, text_document: TextDocumentItem) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(
-            method="textDocument/didOpen",
-            params={"textDocument": text_document.dict()},
+            method="textDocument/didOpen", params={"textDocument": text_document.dict()}
         )
 
     def did_change(
@@ -250,37 +241,25 @@ class Client:
         )
 
     def will_save(
-        self,
-        text_document: TextDocumentIdentifier,
-        reason: TextDocumentSaveReason,
+        self, text_document: TextDocumentIdentifier, reason: TextDocumentSaveReason
     ) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(
             method="textDocument/willSave",
-            params={
-                "textDocument": text_document.dict(),
-                "reason": reason.value,
-            },
+            params={"textDocument": text_document.dict(), "reason": reason.value},
         )
 
     def will_save_wait_until(
-        self,
-        text_document: TextDocumentIdentifier,
-        reason: TextDocumentSaveReason,
+        self, text_document: TextDocumentIdentifier, reason: TextDocumentSaveReason
     ) -> None:
         assert self._state == ClientState.NORMAL
         self._send_request(
             method="textDocument/willSaveWaitUntil",
-            params={
-                "textDocument": text_document.dict(),
-                "reason": reason.value,
-            },
+            params={"textDocument": text_document.dict(), "reason": reason.value},
         )
 
     def did_save(
-        self,
-        text_document: TextDocumentIdentifier,
-        text: t.Optional[str] = None,
+        self, text_document: TextDocumentIdentifier, text: t.Optional[str] = None
     ) -> None:
         assert self._state == ClientState.NORMAL
         params: t.Dict[str, t.Any] = {"textDocument": text_document.dict()}
@@ -305,6 +284,4 @@ class Client:
         params.update(text_document_position.dict())
         if context is not None:
             params.update(context.dict())
-        return self._send_request(
-            method="textDocument/completion", params=params
-        )
+        return self._send_request(method="textDocument/completion", params=params)
