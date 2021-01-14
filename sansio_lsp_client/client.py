@@ -1,7 +1,7 @@
 import enum
 import typing as t
 
-from pydantic import parse_obj_as
+from pydantic import parse_obj_as, ValidationError
 
 from .events import (
     Initialized,
@@ -138,7 +138,7 @@ class Client:
 
             try:
                 completion_list = CompletionList.parse_obj(response.result)
-            except TypeError:
+            except ValidationError:
                 try:
                     completion_list = CompletionList(
                         isIncomplete=False,
@@ -146,7 +146,7 @@ class Client:
                             t.List[CompletionItem], response.result
                         ),
                     )
-                except TypeError:
+                except ValidationError:
                     assert response.result is None
 
             event = Completion(
