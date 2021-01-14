@@ -27,9 +27,7 @@ def main() -> None:
     client = Client(trace="verbose")
 
     file_path = "./playground.py"
-    file_uri = "file://" + urllib.request.pathname2url(
-        os.path.abspath(file_path)
-    )
+    file_uri = "file://" + urllib.request.pathname2url(os.path.abspath(file_path))
     print("File URI:", file_uri)
 
     while True:
@@ -59,9 +57,7 @@ def main() -> None:
                 client.completions(
                     text_document_position=TextDocumentPosition(
                         textDocument=TextDocumentIdentifier(uri=file_uri),
-                        position=Position(
-                            line=5, character=4 + len("struct.") + 1
-                        ),
+                        position=Position(line=5, character=4 + len("struct.") + 1),
                     ),
                     context=CompletionContext(
                         triggerKind=CompletionTriggerKind.INVOKED
@@ -75,26 +71,18 @@ def main() -> None:
                 if event.completion_list is None:
                     print("(None for whatever reason)")
                 elif isinstance(event.completion_list, list):
-                    pprint.pprint(
-                        [item.label for item in event.completion_list]
-                    )
+                    pprint.pprint([item.label for item in event.completion_list])
                 else:
-                    pprint.pprint(
-                        [item.label for item in event.completion_list.items]
-                    )
+                    pprint.pprint([item.label for item in event.completion_list.items])
 
-                client.did_close(
-                    text_document=TextDocumentIdentifier(uri=file_uri)
-                )
+                client.did_close(text_document=TextDocumentIdentifier(uri=file_uri))
 
                 client.will_save(
                     text_document=TextDocumentIdentifier(uri=file_uri),
                     reason=TextDocumentSaveReason.MANUAL,
                 )
 
-                client.did_save(
-                    text_document=TextDocumentIdentifier(uri=file_uri)
-                )
+                client.did_save(text_document=TextDocumentIdentifier(uri=file_uri))
 
                 client.shutdown()
                 client.cancel_last_request()

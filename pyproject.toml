@@ -28,7 +28,7 @@ python-language-server = { extras = ["all"], version = "^0.36.2" }
 pytest = "5.4.3"
 
 [tool.black]
-line-length = 79
+line-length = 88
 target-version = ["py36"]
 # TODO: what's the purpose of specifying exclude here?
 exclude = 'build/|buck-out/|dist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|/playground.py'

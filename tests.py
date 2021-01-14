@@ -15,9 +15,7 @@ def run_langserver(project_root, command):
     with subprocess.Popen(
         command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
     ) as process:
-        lsp_client = lsp.Client(
-            trace="verbose", root_uri=project_root.as_uri()
-        )
+        lsp_client = lsp.Client(trace="verbose", root_uri=project_root.as_uri())
 
         def make_event_iterator():
             while True:
@@ -31,9 +29,7 @@ def run_langserver(project_root, command):
         yield (lsp_client, make_event_iterator())
 
 
-def do_stuff_with_a_langserver(
-    tmp_path, filename, file_content, language_id, command
-):
+def do_stuff_with_a_langserver(tmp_path, filename, file_content, language_id, command):
     path = tmp_path / filename
     path.write_text(file_content)
 
@@ -42,10 +38,7 @@ def do_stuff_with_a_langserver(
         assert isinstance(inited, lsp.Initialized)
         lsp_client.did_open(
             lsp.TextDocumentItem(
-                uri=path.as_uri(),
-                languageId=language_id,
-                text=file_content,
-                version=0,
+                uri=path.as_uri(), languageId=language_id, text=file_content, version=0
             )
         )
 
@@ -103,20 +96,14 @@ do_""",
     ]
 
 
-test_langservers = (
-    pathlib.Path(__name__).absolute().parent / "test_langservers"
-)
+test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
 
 
 @pytest.mark.skipif(
-    not (
-        test_langservers / "node_modules/.bin/javascript-typescript-stdio"
-    ).exists(),
+    not (test_langservers / "node_modules/.bin/javascript-typescript-stdio").exists(),
     reason="javascript-typescript-langserver not found",
 )
-@pytest.mark.skipif(
-    shutil.which("node") is None, reason="node not found in $PATH"
-)
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
 def test_javascript_typescript_langserver(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
@@ -131,9 +118,7 @@ doS""",
         "javascript",
         [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
     )
-    assert [diag.message for diag in diagnostics.diagnostics] == [
-        "';' expected."
-    ]
+    assert [diag.message for diag in diagnostics.diagnostics] == ["';' expected."]
     assert "doSomethingWithFoo" in [
         item.label for item in completions.completion_list.items
     ]

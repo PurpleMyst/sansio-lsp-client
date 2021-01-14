@@ -22,13 +22,7 @@ def calculate_change_events(
         character = index - (adjusted_text.rfind("\n", 0, index) + 1)
         return Position(line=line, character=character)
 
-    for (
-        opcode,
-        old_start,
-        old_end,
-        new_start,
-        new_end,
-    ) in seq_matcher.get_opcodes():
+    for (opcode, old_start, old_end, new_start, new_end) in seq_matcher.get_opcodes():
         if opcode == "equal":
             continue
 
