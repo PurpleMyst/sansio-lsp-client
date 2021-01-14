@@ -1,3 +1,4 @@
+name: Tests
 on: [push, pull_request]
 jobs:
   pytest:
@@ -6,26 +7,26 @@ jobs:
       matrix:
         python-version: ["3.6", "3.7", "3.8", "3.9"]
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
-    - uses: actions/setup-node@v2
-      with:
-        node-version: '12'
-    - run: |
-        mkdir test_langservers
-    - run: |
-        cd test_langservers && npm install javascript-typescript-langserver
-    - shell: bash
-      run: |
-        cd test_langservers
-        for VERSION in 10.0.0 11.0.0; do
-          wget "https://github.com/clangd/clangd/releases/download/$VERSION/clangd-linux-$VERSION.zip"
-          python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
-          chmod +x clangd_$VERSION/bin/clangd
-        done
-    - run: |
-        pip install poetry && poetry install
-    - run: |
-        poetry run pytest -v tests.py
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "12"
+      - run: |
+          mkdir test_langservers
+      - run: |
+          cd test_langservers && npm install javascript-typescript-langserver
+      - shell: bash
+        run: |
+          cd test_langservers
+          for VERSION in 10.0.0 11.0.0; do
+            wget "https://github.com/clangd/clangd/releases/download/$VERSION/clangd-linux-$VERSION.zip"
+            python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
+            chmod +x clangd_$VERSION/bin/clangd
+          done
+      - run: |
+          pip install poetry && poetry install
+      - run: |
+          poetry run pytest -v tests.py
