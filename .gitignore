@@ -131,3 +131,7 @@ tags
 
 
 # End of https://www.gitignore.io/api/vim,python
+
+
+# test stuff
+test_langservers/
