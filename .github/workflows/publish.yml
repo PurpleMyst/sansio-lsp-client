@@ -1,7 +1,8 @@
 name: Build & publish to PyPI
 on:
-  push:
-    branches: [master]
+  create:
+    tags:
+      - v*
 
 jobs:
   publish:
@@ -17,7 +18,7 @@ jobs:
       - name: Build
         run: python -m poetry build -vvv -n
       - name: Publish!
-        env: 
+        env:
           API_KEY: ${{ secrets.API_KEY }}
         run: |
           python -m poetry publish -vvv -n -u __token__ -p "$API_KEY"
