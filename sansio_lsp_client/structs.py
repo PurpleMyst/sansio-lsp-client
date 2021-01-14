@@ -99,8 +99,7 @@ class TextDocumentContentChangeEvent(BaseModel):
         Nota bene: If you're creating a list of
         TextDocumentContentChangeEvent based on many changes, `old_text` must
         reflect the state of the text after all previous change events
-        happened. Or you can just use
-        `sansio_lsp_client.utils.calculate_change_events`.
+        happened.
         """
         change_range = Range(start=change_start, end=change_end)
         return cls(
