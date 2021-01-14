@@ -31,7 +31,9 @@ def run_langserver(project_root, command):
         yield (lsp_client, make_event_iterator())
 
 
-def do_stuff_with_a_langserver(tmp_path, filename, file_content, command):
+def do_stuff_with_a_langserver(
+    tmp_path, filename, file_content, language_id, command
+):
     path = tmp_path / filename
     path.write_text(file_content)
 
@@ -41,7 +43,7 @@ def do_stuff_with_a_langserver(tmp_path, filename, file_content, command):
         lsp_client.did_open(
             lsp.TextDocumentItem(
                 uri=path.as_uri(),
-                languageId="python",
+                languageId=language_id,
                 text=file_content,
                 version=0,
             )
@@ -82,6 +84,7 @@ def do_bar():
     pass
 
 do_""",
+        "python",
         [sys.executable, "-m", "pyls"],
     )
 
@@ -125,6 +128,7 @@ function doSomethingWithFoo(x, y) {
 }
 
 doS""",
+        "javascript",
         [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
@@ -150,7 +154,9 @@ def clangd_decorator(version):
     return inner
 
 
-c_code = """\
+c_args = (
+    "foo.c",
+    """\
 #include <stdio.h>
 void do_foo(void) {
 }
@@ -158,15 +164,16 @@ int do_bar(char x, long y) {
     short z = x + y;
 }
 
-do_"""
+do_""",
+    "c",
+)
 
 
 @clangd_decorator(10)
 def test_clangd_10(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
-        "foo.c",
-        c_code,
+        *c_args,
         [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
@@ -182,8 +189,7 @@ def test_clangd_10(tmp_path):
 def test_clangd_11(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
-        "foo.c",
-        c_code,
+        *c_args,
         [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
     )
     # TODO
