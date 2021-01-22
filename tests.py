@@ -4,6 +4,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import textwrap
 
 import pytest
 
@@ -69,14 +70,16 @@ def test_pyls(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
         "foo.py",
-        """\
-import sys
-def do_foo():
-    pass
-def do_bar():
-    pass
+        textwrap.dedent(
+            """\
+            import sys
+            def do_foo():
+                pass
+            def do_bar():
+                pass
 
-do_""",
+            do_"""
+        ),
         "python",
         [sys.executable, "-m", "pyls"],
     )
@@ -108,13 +111,15 @@ def test_javascript_typescript_langserver(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
         "foo.js",
-        """\
-function doSomethingWithFoo(x, y) {
-    const blah = x + y;
-    return asdf asdf;
-}
+        textwrap.dedent(
+            """\
+            function doSomethingWithFoo(x, y) {
+                const blah = x + y;
+                return asdf asdf;
+            }
 
-doS""",
+            doS"""
+        ),
         "javascript",
         [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
     )
@@ -141,15 +146,17 @@ def clangd_decorator(version):
 
 c_args = (
     "foo.c",
-    """\
-#include <stdio.h>
-void do_foo(void) {
-}
-int do_bar(char x, long y) {
-    short z = x + y;
-}
+    textwrap.dedent(
+        """\
+        #include <stdio.h>
+        void do_foo(void) {
+        }
+        int do_bar(char x, long y) {
+            short z = x + y;
+        }
 
-do_""",
+        do_"""
+    ),
     "c",
 )
 
