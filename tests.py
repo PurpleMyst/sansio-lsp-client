@@ -183,6 +183,13 @@ def test_clangd_11(tmp_path):
         *c_args,
         [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
     )
-    # TODO
-    # assert diagnostics.diagnostics == [...]
-    # assert [item.label for item in completions.completion_list.items] == [...]
+    assert [diag.message for diag in diagnostics.diagnostics] == [
+        "Non-void function does not return a value",
+        "Unknown type name 'do_'",
+        "Expected identifier or '('",
+    ]
+    assert [item.label for item in completions.completion_list.items] == [
+        # TODO: figure out why it's not giving do_foo and do_bar
+        "•__STDC_IEC_559_COMPLEX__",
+        "•__STDC_ISO_10646__",
+    ]
