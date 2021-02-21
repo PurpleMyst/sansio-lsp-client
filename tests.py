@@ -177,8 +177,8 @@ def test_clangd_10(tmp_path):
     assert [item.label for item in completions.completion_list.items] == [
         " do_bar(char x, long y)",
         " do_foo()",
-        '•__STDC_IEC_559_COMPLEX__',
-        '•__STDC_ISO_10646__',
+        "•__STDC_IEC_559_COMPLEX__",
+        "•__STDC_ISO_10646__",
     ]
 
 
@@ -198,6 +198,6 @@ def test_clangd_11(tmp_path):
     assert [item.label for item in completions.completion_list.items] == [
         " do_bar(char x, long y)",
         " do_foo()",
-        '•__STDC_IEC_559_COMPLEX__',
-        '•__STDC_ISO_10646__',
+        "•__STDC_IEC_559_COMPLEX__",
+        "•__STDC_ISO_10646__",
     ]
