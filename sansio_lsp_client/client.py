@@ -1,4 +1,5 @@
 import enum
+import pprint
 import typing as t
 
 from pydantic import parse_obj_as, ValidationError
@@ -113,8 +114,7 @@ class Client:
 
         # FIXME: The errors have meanings.
         if response.error is not None:
-            __import__("pprint").pprint(response.error)
-            raise RuntimeError("Response error!")
+            raise RuntimeError("Response error!\n\n" + pprint.pformat(response.error))
 
         event: Event
 
