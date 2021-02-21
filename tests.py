@@ -174,7 +174,12 @@ def test_clangd_10(tmp_path):
         "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
         "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
     ]
-    # TODO: why does do_bar not show up in completions?
+    assert [item.label for item in completions.completion_list.items] == [
+        " do_bar(char x, long y)",
+        " do_foo()",
+        '•__STDC_IEC_559_COMPLEX__',
+        '•__STDC_ISO_10646__',
+    ]
 
 
 @clangd_decorator(11)
