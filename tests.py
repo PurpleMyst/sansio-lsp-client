@@ -176,7 +176,6 @@ def test_clangd_10(tmp_path):
     # TODO: why does do_bar not show up in completions?
 
 
-@pytest.mark.xfail
 @clangd_decorator(11)
 def test_clangd_11(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(

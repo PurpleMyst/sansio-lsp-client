@@ -162,8 +162,7 @@ class CompletionItem(BaseModel):
     # TODO: implement CompletionItemKind.
     kind: t.Optional[int]
     detail: t.Optional[str]
-    # FIXME: Allow `t.Union[str, MarkupContent]` here
-    documentation: t.Optional[str]
+    documentation: t.Union[str, MarkupContent, None]
     deprecated: t.Optional[bool]
     preselect: t.Optional[bool]
     sortText: t.Optional[str]
