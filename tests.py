@@ -155,7 +155,7 @@ c_args = (
             short z = x + y;
         }
 
-        do_"""
+        int main(void) { do_"""
     ),
     "c",
 )
@@ -170,8 +170,9 @@ def test_clangd_10(tmp_path):
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
-        "Unknown type name 'do_'",
-        "Expected identifier or '('",
+        "Use of undeclared identifier 'do_'",
+        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
+        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
     ]
     # TODO: why does do_bar not show up in completions?
 
@@ -185,11 +186,13 @@ def test_clangd_11(tmp_path):
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
-        "Unknown type name 'do_'",
-        "Expected identifier or '('",
+        "Use of undeclared identifier 'do_'",
+        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
+        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
     ]
     assert [item.label for item in completions.completion_list.items] == [
-        # TODO: figure out why it's not giving do_foo and do_bar
-        "•__STDC_IEC_559_COMPLEX__",
-        "•__STDC_ISO_10646__",
+        " do_bar(char x, long y)",
+        " do_foo()",
+        '•__STDC_IEC_559_COMPLEX__',
+        '•__STDC_ISO_10646__',
     ]
