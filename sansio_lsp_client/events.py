@@ -68,7 +68,7 @@ class LogMessage(ServerNotification):
 # XXX: should these two be just Events or?
 class Completion(Event):
     message_id: Id
-    completion_list: t.Union[CompletionList, t.List[CompletionItem], None]
+    completion_list: t.Optional[CompletionList]
 
 
 # XXX: not sure how to name this event.
