@@ -155,7 +155,7 @@ c_args = (
             short z = x + y;
         }
 
-        do_"""
+        int main(void) { do_"""
     ),
     "c",
 )
@@ -170,13 +170,15 @@ def test_clangd_10(tmp_path):
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
-        "Unknown type name 'do_'",
-        "Expected identifier or '('",
+        "Use of undeclared identifier 'do_'",
+        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
+        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
     ]
-    # TODO: why does do_bar not show up in completions?
+    completions = [item.label for item in completions.completion_list.items]
+    assert " do_foo()" in completions
+    assert " do_bar(char x, long y)" in completions
 
 
-@pytest.mark.xfail
 @clangd_decorator(11)
 def test_clangd_11(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
@@ -184,6 +186,12 @@ def test_clangd_11(tmp_path):
         *c_args,
         [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
     )
-    # TODO
-    # assert diagnostics.diagnostics == [...]
-    # assert [item.label for item in completions.completion_list.items] == [...]
+    assert [diag.message for diag in diagnostics.diagnostics] == [
+        "Non-void function does not return a value",
+        "Use of undeclared identifier 'do_'",
+        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
+        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
+    ]
+    completions = [item.label for item in completions.completion_list.items]
+    assert " do_foo()" in completions
+    assert " do_bar(char x, long y)" in completions
