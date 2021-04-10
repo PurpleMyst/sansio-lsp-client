@@ -12,6 +12,19 @@ from .structs import (
     CompletionItem,
     CompletionList,
     TextEdit,
+
+    MarkupContent,
+    Range,
+    Location,
+    # NEW ########
+    MarkedString,
+    ParameterInformation,
+    SignatureInformation,
+    LocationLink,
+    CallHierarchyItem,
+    SymbolInformation,
+    Registration,
+    DocumentSymbol,
 )
 
 Id = t.Union[int, str]
@@ -79,3 +92,99 @@ class WillSaveWaitUntilEdits(Event):
 class PublishDiagnostics(ServerNotification):
     uri: str
     diagnostics: t.List[Diagnostic]
+
+
+# NEW ##################
+""" Hover:
+    * contents: MarkedString | MarkedString[] | MarkupContent;
+    * range?: Range;
+"""
+class Hover(Event):
+    message_id: t.Optional[Id] # custom...
+    contents: t.Union[
+            t.List[t.Union[MarkedString, str]],
+            MarkedString, # .language, .value
+            MarkupContent, # kind: MarkupKind, value: str
+            str,
+            ]
+    range: t.Optional[Range]
+
+    # DBG
+    def m_str(self):
+        def item_str(item): #SKIP
+            if isinstance(item, MarkedString):
+                return f'[{item.language}]\n{item.value}'
+            elif isinstance(item, MarkupContent):
+                return f'[{item.kind}]\n{item.value}'
+            return item # str
+
+        if isinstance(self.contents, list):
+            return '\n'.join((item_str(item) for item in self.contents))
+        return item_str(self.contents)
+
+class SignatureHelp(Event):
+    message_id: t.Optional[Id] # custom...
+    signatures: t.List[SignatureInformation]
+    activeSignature: t.Optional[int]
+    activeParameter: t.Optional[int]
+
+    def get_hint_str(self):
+        if len(self.signatures) == 0:
+            return None
+        active_sig = self.activeSignature or 0
+        sig = self.signatures[active_sig]
+        params = sig.parameters
+        #  names of params if all strings
+        if (params
+                and  len(params) > 0
+                and  all(isinstance(param.label, str)  for param in params)):
+            return ', '.join((param.label for param in params))
+        # ... or just label of signature
+        else:
+            return sig.label
+
+
+class Definition(Event):
+    result: t.Union[
+        Location,
+        t.List[t.Union[Location, LocationLink]],
+        None]
+
+# result is a list, so putting i a custom class
+class References(Event):
+    result: t.List[Location]
+
+class MCallHierarchItems(Event):
+    result: t.Union[t.List[CallHierarchyItem], None]
+
+class Implementation(Event):
+    result: t.Union[
+        Location,
+        t.List[t.Union[Location, LocationLink]],
+        None]
+
+class MWorkspaceSymbols(Event):
+    result: t.Union[t.List[SymbolInformation], None]
+
+class MDocumentSymbols(Event):
+    result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None]
+
+class Declaration(Event):
+    result: t.Union[
+        Location,
+        t.List[t.Union[Location, LocationLink]],
+        None]
+
+class TypeDefinition(Event):
+    result: t.Union[
+        Location,
+        t.List[t.Union[Location, LocationLink]],
+        None]
+
+class RegisterCapabilityRequest(ServerRequest):
+    registrations: t.List[Registration]
+
+    def reply(self) -> None:
+        self._client._send_response(id=self._id, result={})
+
+
