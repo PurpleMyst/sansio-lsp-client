@@ -22,12 +22,8 @@ class Request(BaseModel):
 class Response(BaseModel):
     id: t.Optional[Id]
     result: t.Optional[JSONDict]
-    #result: t.Optional[t.Union[ # MY
-        #JSONDict,
-        #t.List[t.Any],]]
     error: t.Optional[JSONDict]
 
-# MY
 # type checked in Client._handle_response()
 class ResponseList(Response):
     result: t.Optional[t.List[t.Any]]
@@ -198,19 +194,19 @@ class CompletionItem(BaseModel):
     label: str
     kind: t.Optional[CompletionItemKind]
     tags: t.Optional[CompletionItemTag]
-    detail: t.Optional[str] # human string, line symbol info -- None in C#
+    detail: t.Optional[str]
     documentation: t.Union[str, MarkupContent, None]
-    deprecated: t.Optional[bool] # is deprecated
-    preselect: t.Optional[bool] #DONE selected item
-    sortText: t.Optional[str] # already sorted
-    filterText: t.Optional[str] # ?
-    insertText: t.Optional[str] #DONE
-    insertTextFormat: t.Optional[InsertTextFormat] # {$3:foo} decline capability for now
-    textEdit: t.Optional[TextEdit] #DONE text + ranges to replace
-    additionalTextEdits: t.Optional[t.List[TextEdit]] #DONE like an import
-    commitCharacters: t.Optional[t.List[str]] # api missing
-    command: t.Optional[Command] #TODOz later, when added commands
-    data: t.Optional[t.Any] # just index in C#
+    deprecated: t.Optional[bool]
+    preselect: t.Optional[bool]
+    sortText: t.Optional[str]
+    filterText: t.Optional[str]
+    insertText: t.Optional[str]
+    insertTextFormat: t.Optional[InsertTextFormat]
+    textEdit: t.Optional[TextEdit]
+    additionalTextEdits: t.Optional[t.List[TextEdit]]
+    commitCharacters: t.Optional[t.List[str]]
+    command: t.Optional[Command]
+    data: t.Optional[t.Any]
 
 
 class CompletionList(BaseModel):
@@ -396,4 +392,12 @@ class Registration(BaseModel):
     id: str
     method: str
     registerOptions: t.Optional[t.Any]
+
+
+class FormattingOptions(BaseModel):
+    tabSize: int
+    insertSpaces: bool
+    trimTrailingWhitespace: t.Optional[bool]
+    insertFinalNewline: t.Optional[bool]
+    trimFinalNewlines: t.Optional[bool]
 

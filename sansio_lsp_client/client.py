@@ -29,6 +29,7 @@ from .events import (
     TypeDefinition,
     RegisterCapabilityRequest,
     MDocumentSymbols,
+    DocumentFormatting,
 )
 from .structs import (
     Response,
@@ -51,6 +52,8 @@ from .structs import (
     # NEW
     ResponseList,
     SymbolInformation,
+    FormattingOptions,
+    Range,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -94,7 +97,7 @@ CAPABILITIES = {
             'dynamicRegistration': True,
             'signatureInformation': {
                 'parameterInformation': {
-                    'labelOffsetSupport': False # substring from label -- no use in CudaText
+                    'labelOffsetSupport': False
                 },
                 'documentationFormat': ['markdown', 'plaintext']
             }
@@ -118,6 +121,13 @@ CAPABILITIES = {
             'dynamicRegistration': True
         },
 
+        'formatting': {
+            'dynamicRegistration': True
+        },
+        'rangeFormatting': {
+            'dynamicRegistration': True
+        },
+
         'documentSymbol': {  # Document Symbols Request
             'hierarchicalDocumentSymbolSupport': True,
             'dynamicRegistration': True,
@@ -128,23 +138,12 @@ CAPABILITIES = {
     },
 
     'workspace': {
-        'workspaceEdit': {
-            'failureHandling': 'abort',
-            'documentChanges': True
-        },
-        'applyEdit': True,
-        'configuration': True,
         'symbol': {
             'dynamicRegistration': True,
             'symbolKind': {
                 'valueSet': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
             }
         },
-        'executeCommand': {},
-        'workspaceFolders': True,
-        'didChangeConfiguration': {
-            'dynamicRegistration': True
-        }
     },
 }
 
@@ -269,7 +268,6 @@ class Client:
             event.message_id = response.id
 
         elif request.method == "textDocument/documentSymbol":
-            #TODO spread dynamic type getting
             result_type = t.get_type_hints(MDocumentSymbols)['result']
             event = MDocumentSymbols(result=parse_obj_as(result_type, response.result))
 
@@ -292,6 +290,12 @@ class Client:
         elif request.method == "textDocument/prepareCallHierarchy":
             result_type = t.get_type_hints(MCallHierarchItems)['result']
             event = MCallHierarchItems(result=parse_obj_as(result_type, response.result))
+
+        elif (request.method == "textDocument/formatting"
+                or request.method == "textDocument/rangeFormatting"):
+            result_type = t.get_type_hints(DocumentFormatting)['result']
+            event = DocumentFormatting(result=parse_obj_as(result_type, response.result))
+            event.message_id = response.id
 
         # WORKSPACE
         elif request.method == "workspace/symbol":
@@ -343,15 +347,12 @@ class Client:
 
         events: t.List[Event] = []
         for message in messages:
-            try:
-                if isinstance(message, Response) or isinstance(message, ResponseList):
-                    events.append(self._handle_response(message))
-                elif isinstance(message, Request):
-                    events.append(self._handle_request(message))
-                else:
-                    raise RuntimeError("nobody will ever see this, i hope")
-            except Exception as ex:
-                print(f'RecvError: client.recv: {ex}:.........{message}')
+            if isinstance(message, Response) or isinstance(message, ResponseList):
+                events.append(self._handle_response(message))
+            elif isinstance(message, Request):
+                events.append(self._handle_request(message))
+            else:
+                raise RuntimeError("nobody will ever see this, i hope")
 
         return events
 
@@ -554,8 +555,39 @@ class Client:
 
     def doc_symbol(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
-        self._send_request(
+        return self._send_request(
             method="textDocument/documentSymbol",
             params={"textDocument": text_document.dict()},
         )
 
+    def formatting(
+            self,
+            text_document: TextDocumentIdentifier,
+            options: FormattingOptions,
+    ) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "textDocument": text_document.dict(),
+            "options": options.dict(),
+        }
+        return self._send_request(
+            method="textDocument/formatting",
+            params=params,
+        )
+
+    def range_formatting(
+            self,
+            text_document: TextDocumentIdentifier,
+            range: Range,
+            options: FormattingOptions,
+    ) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "textDocument": text_document.dict(),
+            "range": range.dict(),
+            "options": options.dict(),
+        }
+        return self._send_request(
+            method="textDocument/rangeFormatting",
+            params=params,
+        )

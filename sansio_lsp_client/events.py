@@ -109,19 +109,6 @@ class Hover(Event):
             ]
     range: t.Optional[Range]
 
-    # DBG
-    def m_str(self):
-        def item_str(item): #SKIP
-            if isinstance(item, MarkedString):
-                return f'[{item.language}]\n{item.value}'
-            elif isinstance(item, MarkupContent):
-                return f'[{item.kind}]\n{item.value}'
-            return item # str
-
-        if isinstance(self.contents, list):
-            return '\n'.join((item_str(item) for item in self.contents))
-        return item_str(self.contents)
-
 class SignatureHelp(Event):
     message_id: t.Optional[Id] # custom...
     signatures: t.List[SignatureInformation]
@@ -133,15 +120,7 @@ class SignatureHelp(Event):
             return None
         active_sig = self.activeSignature or 0
         sig = self.signatures[active_sig]
-        params = sig.parameters
-        #  names of params if all strings
-        if (params
-                and  len(params) > 0
-                and  all(isinstance(param.label, str)  for param in params)):
-            return ', '.join((param.label for param in params))
-        # ... or just label of signature
-        else:
-            return sig.label
+        return sig.label
 
 
 class Definition(Event):
@@ -150,7 +129,7 @@ class Definition(Event):
         t.List[t.Union[Location, LocationLink]],
         None]
 
-# result is a list, so putting i a custom class
+# result is a list, so putting in a custom class
 class References(Event):
     result: t.List[Location]
 
@@ -187,4 +166,6 @@ class RegisterCapabilityRequest(ServerRequest):
     def reply(self) -> None:
         self._client._send_response(id=self._id, result={})
 
-
+class DocumentFormatting(Event):
+    message_id: t.Optional[Id] # custom...
+    result: t.Union[t.List[TextEdit], None]
