@@ -265,7 +265,6 @@ class Diagnostic(BaseModel):
 
     relatedInformation: t.Optional[t.List[DiagnosticRelatedInformation]]
 
-# new ##################
 """ HOVER #################
 Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
@@ -400,4 +399,3 @@ class FormattingOptions(BaseModel):
     trimTrailingWhitespace: t.Optional[bool]
     insertFinalNewline: t.Optional[bool]
     trimFinalNewlines: t.Optional[bool]
-
