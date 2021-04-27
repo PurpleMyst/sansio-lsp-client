@@ -442,7 +442,6 @@ class Client:
             params.update(context.dict())
         return self._send_request(method="textDocument/completion", params=params)
 
-# NEW #####################
     def hover(
             self,
             text_document_position: TextDocumentPosition,
