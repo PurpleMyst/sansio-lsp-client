@@ -16,7 +16,6 @@ from .structs import (
     MarkupContent,
     Range,
     Location,
-    # NEW ########
     MarkedString,
     ParameterInformation,
     SignatureInformation,
