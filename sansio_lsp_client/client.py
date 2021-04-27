@@ -17,7 +17,6 @@ from .events import (
     WillSaveWaitUntilEdits,
     ShowMessageRequest,
     LogMessage,
-    # NEW ###
     Hover,
     SignatureHelp,
     Definition,
