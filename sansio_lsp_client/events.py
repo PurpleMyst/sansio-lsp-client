@@ -93,7 +93,6 @@ class PublishDiagnostics(ServerNotification):
     diagnostics: t.List[Diagnostic]
 
 
-# NEW ##################
 """ Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
     * range?: Range;
