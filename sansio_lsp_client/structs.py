@@ -12,6 +12,8 @@ JSONDict = t.Dict[str, t.Any]
 
 Id = t.Union[int, str]
 
+ProgressToken = t.Union[int, str]
+
 
 class Request(BaseModel):
     method: str
@@ -21,12 +23,11 @@ class Request(BaseModel):
 
 class Response(BaseModel):
     id: t.Optional[Id]
-    result: t.Optional[JSONDict]
+    result: t.Optional[t.Union[
+        t.List[t.Any],
+        JSONDict,
+        ]]
     error: t.Optional[JSONDict]
-
-# type checked in Client._handle_response()
-class ResponseList(Response):
-    result: t.Optional[t.List[t.Any]]
 
 
 class MessageType(enum.IntEnum):
@@ -227,7 +228,7 @@ class Location(BaseModel):
 
 class LocationLink(BaseModel):
     originSelectionRange: t.Optional[Range]
-    targetUri: str # DocumentUri...
+    targetUri: str # DocumentUri
     targetRange: Range
     targetSelectionRange: Range
 
@@ -248,57 +249,48 @@ class DiagnosticSeverity(enum.IntEnum):
                     self.HINT:'Hint'}[self]
 
 
-#TODO revise to spec, original seems iffy
 class Diagnostic(BaseModel):
     range: Range
 
-    #severity: DiagnosticSeverity
     severity: t.Optional[DiagnosticSeverity]
 
     # TODO: Support this as an union of str and int
     code: t.Optional[t.Any]
 
+
     source: t.Optional[str]
 
-    #message: t.Optional[str]
     message: str
 
     relatedInformation: t.Optional[t.List[DiagnosticRelatedInformation]]
 
+<<<<<<< HEAD
+=======
 """ HOVER #################
 Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
     * range?: Range;
 """
+>>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746
 #deprecated, use MarkupContent
 class MarkedString(BaseModel):
     language: str
     value: str
 
-""" SignatureHelp
-    * signatures: SignatureInformation[];
-        # SignatureInformation
-        * label: string;
-        * documentation?: string | MarkupContent;
-        * parameters?: ParameterInformation[];
-            # ParameterInformation
-            * label: string | [uinteger, uinteger];
-            * documentation?: string | MarkupContent;
-        * activeParameter?: uinteger;
-    * activeSignature?: uinteger;
-    * activeParameter?: uinteger;
-"""
+
 class ParameterInformation(BaseModel):
     label: t.Union[
         str,
         t.Tuple[int, int]]
     documentation: t.Optional[t.Union[str, MarkupContent]]
 
+
 class SignatureInformation(BaseModel):
     label: str
     documentation: t.Optional[t.Union[MarkupContent, str]]
     parameters: t.Optional[t.List[ParameterInformation]]
     activeParameter: t.Optional[int]
+
 
 class SymbolKind(enum.IntEnum):
     FILE = 1
@@ -331,6 +323,7 @@ class SymbolKind(enum.IntEnum):
 class SymbolTag(enum.IntEnum):
     DEPRECATED = 1
 
+
 class CallHierarchyItem(BaseModel):
     name: str
     king: SymbolKind
@@ -340,6 +333,7 @@ class CallHierarchyItem(BaseModel):
     range: Range
     selectionRange: Range
     data: t.Optional[t.Any]
+
 
 class CallHierarchyIncomingCall(BaseModel):
     from_: CallHierarchyItem
@@ -361,7 +355,8 @@ class TextDocumentSyncKind(enum.IntEnum):
     FULL = 1
     INCREMENTAL = 2
 
-class SymbolInformation(BaseModel): # symbols: flat list
+
+class SymbolInformation(BaseModel):
     name: str
     kind: SymbolKind
     tags: t.Optional[SymbolTag]
@@ -369,8 +364,11 @@ class SymbolInformation(BaseModel): # symbols: flat list
     location: Location
     containerName: t.Optional[str]
 
-    def mpos(self):
+    def pos(self):
+        """ returns (x,y)
+        """
         return self.location.range.start.character, self.location.range.start.line
+
 
 #TODO test handling
 class DocumentSymbol(BaseModel): # symbols: hierarchy
@@ -384,7 +382,9 @@ class DocumentSymbol(BaseModel): # symbols: hierarchy
     # https://stackoverflow.com/questions/36193540
     children: t.Optional['DocumentSymbol']
 
-    def mpos(self):
+    def pos(self):
+        """ returns (x,y)
+        """
         return self.selectionRange.start.character, self.selectionRange.start.line
 
 class Registration(BaseModel):
@@ -399,3 +399,39 @@ class FormattingOptions(BaseModel):
     trimTrailingWhitespace: t.Optional[bool]
     insertFinalNewline: t.Optional[bool]
     trimFinalNewlines: t.Optional[bool]
+<<<<<<< HEAD
+
+class WorkspaceFolder(BaseModel):
+    uri: str
+    name: str
+
+
+class ProgressValue(BaseModel):
+    pass
+
+class WorkDoneProgressValue(ProgressValue):
+    pass
+
+class WorkDoneProgressBeginValue(WorkDoneProgressValue):
+    kind: str = 'begin'
+    title: str
+    cancellable: t.Optional[bool]
+    message: t.Optional[str]
+    percentage: t.Optional[int]
+
+class WorkDoneProgressReportValue(WorkDoneProgressValue):
+    kind: str = 'report'
+    cancellable: t.Optional[bool]
+    message: t.Optional[str]
+    percentage: t.Optional[int]
+
+class WorkDoneProgressEndValue(WorkDoneProgressValue):
+    kind: str = 'end'
+    message: t.Optional[str]
+
+
+class ConfigurationItem(BaseModel):
+    scopeUri: t.Optional[str]
+    section: t.Optional[str]
+=======
+>>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746

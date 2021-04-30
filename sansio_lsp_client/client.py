@@ -29,12 +29,21 @@ from .events import (
     RegisterCapabilityRequest,
     MDocumentSymbols,
     DocumentFormatting,
+    Progress,
+    WorkDoneProgress,
+    WorkDoneProgressCreate,
+    WorkDoneProgressBegin,
+    WorkDoneProgressReport,
+    WorkDoneProgressEnd,
+    ConfigurationRequest,
+    WorkspaceFolders,
 )
 from .structs import (
     Response,
     TextDocumentPosition,
     CompletionContext,
     CompletionList,
+    CompletionItemKind,
     CompletionItem,
     Request,
     JSONDict,
@@ -45,14 +54,13 @@ from .structs import (
     TextDocumentSaveReason,
     TextEdit,
     Id,
-
     Location,
     LocationLink,
-    # NEW
-    ResponseList,
+    SymbolKind,
     SymbolInformation,
     FormattingOptions,
     Range,
+    WorkspaceFolder,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -73,6 +81,10 @@ CAPABILITIES = {
             #'willSaveWaitUntil': True,
             'dynamicRegistration': True,
             #'willSave': True
+        },
+
+        'publishDiagnostics': {
+            'relatedInformation': True
         },
 
         'completion': {
@@ -108,9 +120,10 @@ CAPABILITIES = {
         'references': {
             'dynamicRegistration': True
         },
-        'callHierarchy':{
-            'dynamicRegistration': True
-        },
+        # incomplete
+        #'callHierarchy':{
+            #'dynamicRegistration': True
+        #},
         'declaration': {
             'linkSupport': True,
             'dynamicRegistration': True
@@ -136,13 +149,34 @@ CAPABILITIES = {
         },
     },
 
+    'window': {
+        'showMessage': {
+            #'messageActionItem': {
+                #'additionalPropertiesSupport': True
+            #}
+        },
+        'workDoneProgress': True
+    },
+
     'workspace': {
         'symbol': {
             'dynamicRegistration': True,
             'symbolKind': {
-                'valueSet': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+                'valueSet': list(SymbolKind)
             }
         },
+        'workspaceFolders': True,
+
+        #'workspaceEdit': {
+            #'failureHandling': 'abort',
+            #'documentChanges': True
+        #},
+        #'applyEdit': True,
+        #'executeCommand': {},
+        'configuration': True,
+        'didChangeConfiguration': {
+            'dynamicRegistration': True
+        }
     },
 }
 
@@ -153,6 +187,7 @@ class Client:
         self,
         process_id: t.Optional[int] = None,
         root_uri: t.Optional[str] = None,
+        workspace_folders: t.Optional[t.List[WorkspaceFolder]] = None,
         trace: str = "off",
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
@@ -173,12 +208,20 @@ class Client:
         # it would just litter the code unnecessarily.
         self._id_counter = 0
 
+        # Store type of '$/progress' for parsing
+        self._progress_tokens_map: t.Dict[ProgressToken, t.Type[Progress]] = {}
+
+        # prepare workspace folders for sending -- to `dict`
+        if workspace_folders:
+            workspace_folders = [f.dict() for f in workspace_folders]
+
         # We'll just immediately send off an "initialize" request.
         self._send_request(
             method="initialize",
             params={
                 "processId": process_id,
                 "rootUri": root_uri,
+                "workspaceFolders": workspace_folders,
                 "trace": trace,
                 "capabilities": CAPABILITIES,
             },
@@ -228,7 +271,7 @@ class Client:
 
         if request.method == "initialize":
             assert self._state == ClientState.WAITING_FOR_INITIALIZED
-            self._send_notification("initialized")
+            self._send_notification("initialized", params={}) # 'gopls' doesnt recognise 'None' 'params'
             event = Initialized.parse_obj(response.result)
             self._state = ClientState.NORMAL
 
@@ -267,39 +310,32 @@ class Client:
             event.message_id = response.id
 
         elif request.method == "textDocument/documentSymbol":
-            result_type = t.get_type_hints(MDocumentSymbols)['result']
-            event = MDocumentSymbols(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(MDocumentSymbols, response)
 
         #GOTOs
         elif request.method == "textDocument/definition":
-            result_type = t.get_type_hints(Definition)['result']
-            event = Definition(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(Definition, response)
+
         elif request.method == "textDocument/references":
             event = References(result=parse_obj_as(t.List[Location], response.result))
         elif request.method == "textDocument/implementation":
-            result_type = t.get_type_hints(Implementation)['result']
-            event = Implementation(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(Implementation, response)
         elif request.method == "textDocument/declaration":
-            result_type = t.get_type_hints(Declaration)['result']
-            event = Declaration(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(Declaration, response)
         elif request.method == "textDocument/typeDefinition":
-            result_type = t.get_type_hints(TypeDefinition)['result']
-            event = TypeDefinition(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(TypeDefinition, response)
 
         elif request.method == "textDocument/prepareCallHierarchy":
-            result_type = t.get_type_hints(MCallHierarchItems)['result']
-            event = MCallHierarchItems(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(MCallHierarchItems, response)
 
         elif (request.method == "textDocument/formatting"
                 or request.method == "textDocument/rangeFormatting"):
-            result_type = t.get_type_hints(DocumentFormatting)['result']
-            event = DocumentFormatting(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(DocumentFormatting, response)
             event.message_id = response.id
 
         # WORKSPACE
         elif request.method == "workspace/symbol":
-            result_type = t.get_type_hints(MWorkspaceSymbols)['result']
-            event = MWorkspaceSymbols(result=parse_obj_as(result_type, response.result))
+            event = parse_obj_as(MWorkspaceSymbols, response)
 
         else:
             raise NotImplementedError((response, request))
@@ -324,21 +360,46 @@ class Client:
                     " or ServerNotification"
                 )
 
-        if request.method == "window/showMessage":
+        if request.method == "workspace/workspaceFolders":
+            return parse_request(WorkspaceFolders)
+
+        elif request.method == "workspace/configuration":
+            return parse_request(ConfigurationRequest)
+
+        elif request.method == "window/showMessage":
             return parse_request(ShowMessage)
         elif request.method == "window/showMessageRequest":
             return parse_request(ShowMessageRequest)
         elif request.method == "window/logMessage":
             return parse_request(LogMessage)
+
         elif request.method == "textDocument/publishDiagnostics":
             return parse_request(PublishDiagnostics)
 
+        elif request.method == "window/workDoneProgress/create":
+            ev = parse_request(WorkDoneProgressCreate)
+            self._progress_tokens_map[request.params['token']] = WorkDoneProgress
+            return parse_request(WorkDoneProgressCreate)
+
+        elif request.method == "$/progress":
+            progress_type = self._progress_tokens_map.get(request.params['token'])
+
+            if progress_type == WorkDoneProgress:
+                kind = request.params.get('value', {}).get('kind')
+                if kind == 'begin':
+                    return parse_request(WorkDoneProgressBegin)
+                elif kind == 'report':
+                    return parse_request(WorkDoneProgressReport)
+                elif kind == 'end':
+                    del self._progress_tokens_map[request.params["token"]]
+                    return parse_request(WorkDoneProgressEnd)
+
         elif request.method == "client/registerCapability":
             return parse_request(RegisterCapabilityRequest)
-        else:
-            raise NotImplementedError(request)
 
-    def recv(self, data: bytes) -> t.List[Event]:
+        raise NotImplementedError(request)
+
+    def recv(self, data: bytes, errors: t.Optional[list] = None) -> t.List[Event]:
         self._recv_buf += data
 
         # _parse_messages deletes consumed data from self._recv_buf
@@ -346,12 +407,16 @@ class Client:
 
         events: t.List[Event] = []
         for message in messages:
-            if isinstance(message, Response) or isinstance(message, ResponseList):
-                events.append(self._handle_response(message))
-            elif isinstance(message, Request):
-                events.append(self._handle_request(message))
-            else:
-                raise RuntimeError("nobody will ever see this, i hope")
+            try:
+                if isinstance(message, Response):
+                    events.append(self._handle_response(message))
+                elif isinstance(message, Request):
+                    events.append(self._handle_request(message))
+                else:
+                    raise RuntimeError("nobody will ever see this, i hope")
+            except Exception as ex:
+                if errors is not None:
+                    errors.append(ex)
 
         return events
 
@@ -367,7 +432,7 @@ class Client:
 
     def exit(self) -> None:
         assert self._state == ClientState.SHUTDOWN
-        self._send_notification(method="exit")
+        self._send_notification(method="exit", params={})
         self._state = ClientState.EXITED
 
     def cancel_last_request(self) -> None:
@@ -430,6 +495,21 @@ class Client:
             params={"textDocument": text_document.dict()},
         )
 
+    def did_change_workspace_folders(
+        self,
+        added: t.List[WorkspaceFolder],
+        removed: t.List[WorkspaceFolder],
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "added": [f.dict() for f in added],
+            "removed": [f.dict() for f in removed],
+        }
+        self._send_notification(
+            method="workspace/didChangeWorkspaceFolders",
+            params=params,
+        )
+
     def completion(
             self,
             text_document_position: TextDocumentPosition,
@@ -445,7 +525,6 @@ class Client:
     def hover(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -456,7 +535,6 @@ class Client:
     def signatureHelp(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -467,8 +545,6 @@ class Client:
     def definition(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -479,8 +555,6 @@ class Client:
     def declaration(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -491,8 +565,6 @@ class Client:
     def typeDefinition(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -503,8 +575,6 @@ class Client:
     def references(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {
@@ -519,7 +589,6 @@ class Client:
     def call_hierarchy_in(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -530,8 +599,6 @@ class Client:
     def implementation(
             self,
             text_document_position: TextDocumentPosition,
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -542,8 +609,6 @@ class Client:
     def workspace_symbol(
             self,
             query: str = '',
-            # WorkDoneProgressParams
-            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(

@@ -47,7 +47,7 @@ def do_stuff_with_a_langserver(tmp_path, filename, file_content, language_id, co
         assert isinstance(diagnostics, lsp.PublishDiagnostics)
         assert diagnostics.uri == path.as_uri()
 
-        event_id = lsp_client.completions(
+        event_id = lsp_client.completion(
             text_document_position=lsp.TextDocumentPosition(
                 textDocument=lsp.TextDocumentIdentifier(uri=path.as_uri()),
                 position=lsp.Position(

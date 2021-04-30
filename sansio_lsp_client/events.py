@@ -12,7 +12,6 @@ from .structs import (
     CompletionItem,
     CompletionList,
     TextEdit,
-
     MarkupContent,
     Range,
     Location,
@@ -24,6 +23,13 @@ from .structs import (
     SymbolInformation,
     Registration,
     DocumentSymbol,
+    WorkspaceFolder,
+    ProgressToken,
+    ProgressValue,
+    WorkDoneProgressBeginValue,
+    WorkDoneProgressReportValue,
+    WorkDoneProgressEndValue,
+    ConfigurationItem,
 )
 
 Id = t.Union[int, str]
@@ -76,6 +82,29 @@ class LogMessage(ServerNotification):
     type: MessageType
     message: str
 
+class WorkDoneProgressCreate(ServerRequest):
+    token: ProgressToken
+
+    def reply(self) -> None:
+        self._client._send_response(id=self._id, result=None)
+
+class Progress(ServerNotification):
+    token: ProgressToken
+    value: ProgressValue
+
+# for type checking
+class WorkDoneProgress(Progress):
+    pass
+
+class WorkDoneProgressBegin(WorkDoneProgress):
+    value: WorkDoneProgressBeginValue
+
+class WorkDoneProgressReport(WorkDoneProgress):
+    value: WorkDoneProgressReportValue
+
+class WorkDoneProgressEnd(WorkDoneProgress):
+    value: WorkDoneProgressEndValue
+
 
 # XXX: should these two be just Events or?
 class Completion(Event):
@@ -93,10 +122,13 @@ class PublishDiagnostics(ServerNotification):
     diagnostics: t.List[Diagnostic]
 
 
+<<<<<<< HEAD
+=======
 """ Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
     * range?: Range;
 """
+>>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746
 class Hover(Event):
     message_id: t.Optional[Id] # custom...
     contents: t.Union[
@@ -106,6 +138,7 @@ class Hover(Event):
             str,
             ]
     range: t.Optional[Range]
+
 
 class SignatureHelp(Event):
     message_id: t.Optional[Id] # custom...
@@ -127,12 +160,14 @@ class Definition(Event):
         t.List[t.Union[Location, LocationLink]],
         None]
 
-# result is a list, so putting in a custom class
+
 class References(Event):
     result: t.List[Location]
 
+
 class MCallHierarchItems(Event):
     result: t.Union[t.List[CallHierarchyItem], None]
+
 
 class Implementation(Event):
     result: t.Union[
@@ -140,11 +175,14 @@ class Implementation(Event):
         t.List[t.Union[Location, LocationLink]],
         None]
 
+
 class MWorkspaceSymbols(Event):
     result: t.Union[t.List[SymbolInformation], None]
 
+
 class MDocumentSymbols(Event):
     result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None]
+
 
 class Declaration(Event):
     result: t.Union[
@@ -152,11 +190,13 @@ class Declaration(Event):
         t.List[t.Union[Location, LocationLink]],
         None]
 
+
 class TypeDefinition(Event):
     result: t.Union[
         Location,
         t.List[t.Union[Location, LocationLink]],
         None]
+
 
 class RegisterCapabilityRequest(ServerRequest):
     registrations: t.List[Registration]
@@ -164,6 +204,29 @@ class RegisterCapabilityRequest(ServerRequest):
     def reply(self) -> None:
         self._client._send_response(id=self._id, result={})
 
+
 class DocumentFormatting(Event):
     message_id: t.Optional[Id] # custom...
     result: t.Union[t.List[TextEdit], None]
+
+
+class WorkspaceFolders(ServerRequest):
+    result: None
+
+    def reply(self, folders: t.Optional[t.List[WorkspaceFolder]] = None) -> None:
+        """
+        Reply to the WorkspaceFolder with workspace folders.
+
+        No bytes are actually returned from this method, the reply's bytes
+        are added to the client's internal send buffer.
+        """
+        self._client._send_response(
+            id=self._id, result=[f.dict() for f in folders] if folders is not None else None
+        )
+
+
+class ConfigurationRequest(ServerRequest):
+    items: t.List[ConfigurationItem]
+
+    def reply(self, result=t.List[t.Any]) -> None:
+        self._client._send_response(id=self._id,  result=result)

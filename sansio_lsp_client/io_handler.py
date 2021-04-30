@@ -4,7 +4,7 @@ import typing as t
 
 from pydantic import parse_obj_as
 
-from .structs import Request, Response, JSONDict,   ResponseList
+from .structs import Request, Response, JSONDict
 
 
 def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
@@ -149,11 +149,7 @@ def _parse_one_message(
 
     def parse_request_or_response(data: JSONDict,) -> t.Union[Request, Response]:
         del data["jsonrpc"]
-        # MY Workaround: pydantic parses optional union(list,dict) as dict first
-        if isinstance(data.get('result'), list):
-            return parse_obj_as(ResponseList, data)  # type: ignore
-        else:
-            return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
+        return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
 
     content = json.loads(raw_content.decode(encoding))
 
