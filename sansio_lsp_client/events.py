@@ -126,7 +126,6 @@ class PublishDiagnostics(ServerNotification):
     * contents: MarkedString | MarkedString[] | MarkupContent;
     * range?: Range;
 """
->>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746
 class Hover(Event):
     message_id: t.Optional[Id] # custom...
     contents: t.Union[
