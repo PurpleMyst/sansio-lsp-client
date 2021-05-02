@@ -397,7 +397,6 @@ class FormattingOptions(BaseModel):
     trimTrailingWhitespace: t.Optional[bool]
     insertFinalNewline: t.Optional[bool]
     trimFinalNewlines: t.Optional[bool]
-<<<<<<< HEAD
 
 class WorkspaceFolder(BaseModel):
     uri: str
