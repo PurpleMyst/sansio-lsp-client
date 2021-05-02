@@ -20,12 +20,12 @@ def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
 
 
 def _make_request(
-    method: str,
-    params: t.Optional[JSONDict] = None,
-    id: t.Optional[int] = None,
-    *,
-    encoding: str = "utf-8",
-) -> bytes:
+            method: str,
+            params: t.Optional[JSONDict] = None,
+            id: t.Optional[int] = None,
+            *,
+            encoding: str = "utf-8",
+        ) -> bytes:
     request = bytearray()
 
     # Set up the actual JSONRPC content and encode it.
@@ -152,6 +152,7 @@ def _parse_one_message(
         return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
 
     content = json.loads(raw_content.decode(encoding))
+
     if isinstance(content, list):
         # This is in response to a batch operation.
         return map(parse_request_or_response, content)
