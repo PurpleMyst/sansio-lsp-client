@@ -122,8 +122,6 @@ class PublishDiagnostics(ServerNotification):
     diagnostics: t.List[Diagnostic]
 
 
-<<<<<<< HEAD
-=======
 """ Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
     * range?: Range;
