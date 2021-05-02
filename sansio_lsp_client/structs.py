@@ -264,8 +264,6 @@ class Diagnostic(BaseModel):
 
     relatedInformation: t.Optional[t.List[DiagnosticRelatedInformation]]
 
-<<<<<<< HEAD
-=======
 """ HOVER #################
 Hover:
     * contents: MarkedString | MarkedString[] | MarkupContent;
