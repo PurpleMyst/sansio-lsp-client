@@ -430,5 +430,3 @@ class WorkDoneProgressEndValue(WorkDoneProgressValue):
 class ConfigurationItem(BaseModel):
     scopeUri: t.Optional[str]
     section: t.Optional[str]
-=======
->>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746
