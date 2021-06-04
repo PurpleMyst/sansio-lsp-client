@@ -23,7 +23,7 @@ class Request(BaseModel):
 
 class Response(BaseModel):
     id: t.Optional[Id]
-    result: t.Optional[t.Union[
+    result: t.Optional[ t.Union[
         t.List[t.Any],
         JSONDict,
         ]]
@@ -61,6 +61,10 @@ class Position(BaseModel):
     line: int
     character: int
 
+    # for sorting
+    def __lt__(self, other):
+        return (self.character < other.character) if self.line == other.line else (self.line < other.line)
+
 
 class Range(BaseModel):
     start: Position
@@ -90,8 +94,17 @@ class TextDocumentContentChangeEvent(BaseModel):
     range: t.Optional[Range]
     rangeLength: t.Optional[int] # deprecated, use .range
 
+
+    def dict(self):
+        d = super(TextDocumentContentChangeEvent, self).dict()
+
+        # vscode-css server requires un-filled values to be absent
+        if self.rangeLength is None:    del d['rangeLength']
+        if self.range is None:          del d['range']
+        return d
+
     @classmethod
-    def change_range(
+    def range_change(
         cls,
         change_start: Position,
         change_end: Position,
@@ -114,7 +127,7 @@ class TextDocumentContentChangeEvent(BaseModel):
         )
 
     @classmethod
-    def change_whole_document(
+    def whole_document_change(
         cls, change_text: str
     ) -> "TextDocumentContentChangeEvent":
         return cls(text=change_text)
@@ -228,7 +241,7 @@ class Location(BaseModel):
 
 class LocationLink(BaseModel):
     originSelectionRange: t.Optional[Range]
-    targetUri: str # DocumentUri
+    targetUri: str # DocumentUri...
     targetRange: Range
     targetSelectionRange: Range
 
@@ -254,9 +267,7 @@ class Diagnostic(BaseModel):
 
     severity: t.Optional[DiagnosticSeverity]
 
-    # TODO: Support this as an union of str and int
-    code: t.Optional[t.Any]
-
+    code: t.Optional[ t.Union[int, str]]
 
     source: t.Optional[str]
 
@@ -264,13 +275,7 @@ class Diagnostic(BaseModel):
 
     relatedInformation: t.Optional[t.List[DiagnosticRelatedInformation]]
 
-""" HOVER #################
-Hover:
-    * contents: MarkedString | MarkedString[] | MarkupContent;
-    * range?: Range;
-"""
->>>>>>> 5181466d0c26d826f45b60e6c41343ccc1e11746
-#deprecated, use MarkupContent
+
 class MarkedString(BaseModel):
     language: str
     value: str
@@ -318,6 +323,7 @@ class SymbolKind(enum.IntEnum):
     OPERATOR = 25
     TYPEPARAMETER = 26
 
+
 class SymbolTag(enum.IntEnum):
     DEPRECATED = 1
 
@@ -354,36 +360,33 @@ class TextDocumentSyncKind(enum.IntEnum):
     INCREMENTAL = 2
 
 
-class SymbolInformation(BaseModel):
+class SymbolInformation(BaseModel): # symbols: flat list
     name: str
     kind: SymbolKind
-    tags: t.Optional[SymbolTag]
+    tags: t.Optional[t.List[SymbolTag]]
     deprecated: t.Optional[bool]
     location: Location
     containerName: t.Optional[str]
 
-    def pos(self):
-        """ returns (x,y)
-        """
-        return self.location.range.start.character, self.location.range.start.line
-
-
-#TODO test handling
 class DocumentSymbol(BaseModel): # symbols: hierarchy
     name: str
     detail: t.Optional[str]
     kind: SymbolKind
-    tags: t.Optional[SymbolTag]
+    tags: t.Optional[t.List[SymbolTag]]
     deprecated: t.Optional[bool]
     range: Range
     selectionRange: Range
     # https://stackoverflow.com/questions/36193540
-    children: t.Optional['DocumentSymbol']
+    children: t.Optional[t.List['DocumentSymbol']]
 
     def pos(self):
         """ returns (x,y)
         """
         return self.selectionRange.start.character, self.selectionRange.start.line
+
+# for `.children` treeeness
+DocumentSymbol.update_forward_refs()
+
 
 class Registration(BaseModel):
     id: str
@@ -398,6 +401,7 @@ class FormattingOptions(BaseModel):
     insertFinalNewline: t.Optional[bool]
     trimFinalNewlines: t.Optional[bool]
 
+
 class WorkspaceFolder(BaseModel):
     uri: str
     name: str
@@ -409,21 +413,26 @@ class ProgressValue(BaseModel):
 class WorkDoneProgressValue(ProgressValue):
     pass
 
+class MWorkDoneProgressKind(enum.Enum):
+    BEGIN = 'begin'
+    REPORT = 'report'
+    END = 'end'
+
 class WorkDoneProgressBeginValue(WorkDoneProgressValue):
-    kind: str = 'begin'
+    kind: MWorkDoneProgressKind # .BEGIN
     title: str
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
 class WorkDoneProgressReportValue(WorkDoneProgressValue):
-    kind: str = 'report'
+    kind: MWorkDoneProgressKind # .REPORT
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
 class WorkDoneProgressEndValue(WorkDoneProgressValue):
-    kind: str = 'end'
+    kind: MWorkDoneProgressKind # .END
     message: t.Optional[str]
 
 

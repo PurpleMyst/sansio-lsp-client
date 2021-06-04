@@ -39,6 +39,20 @@ class Event(BaseModel):
     pass
 
 
+class ResponseError(Event):
+    message_id: t.Optional[Id]
+    code: int
+    message: str
+    data: t.Optional[ t.Union[
+        str,
+        int, float,
+        bool,
+        list,
+        JSONDict,
+        None,
+    ]]
+
+
 class ServerRequest(Event):
     _client: "Client" = PrivateAttr()
     _id: Id = PrivateAttr()
@@ -92,7 +106,6 @@ class Progress(ServerNotification):
     token: ProgressToken
     value: ProgressValue
 
-# for type checking
 class WorkDoneProgress(Progress):
     pass
 
@@ -158,8 +171,9 @@ class Definition(Event):
         None]
 
 
+# result is a list, so putting in a custom class
 class References(Event):
-    result: t.List[Location]
+    result: t.Union[t.List[Location], None]
 
 
 class MCallHierarchItems(Event):
@@ -176,10 +190,9 @@ class Implementation(Event):
 class MWorkspaceSymbols(Event):
     result: t.Union[t.List[SymbolInformation], None]
 
-
 class MDocumentSymbols(Event):
+    message_id: t.Optional[Id]
     result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None]
-
 
 class Declaration(Event):
     result: t.Union[
@@ -203,12 +216,12 @@ class RegisterCapabilityRequest(ServerRequest):
 
 
 class DocumentFormatting(Event):
-    message_id: t.Optional[Id] # custom...
+    message_id: t.Optional[Id]
     result: t.Union[t.List[TextEdit], None]
 
 
 class WorkspaceFolders(ServerRequest):
-    result: None
+    result: t.Union[WorkspaceFolder, None]
 
     def reply(self, folders: t.Optional[t.List[WorkspaceFolder]] = None) -> None:
         """

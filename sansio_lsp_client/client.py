@@ -6,6 +6,7 @@ import typing as t
 from pydantic import parse_obj_as, ValidationError
 
 from .events import (
+    ResponseError,
     Initialized,
     Completion,
     ServerRequest,
@@ -93,7 +94,7 @@ CAPABILITIES = {
                 'snippetSupport': False
             },
             'completionItemKind': {
-                'valueSet': list(CompletionItemKind)
+                'valueSet': list(CompletionItemKind),
             }
         },
         'hover': {
@@ -108,7 +109,7 @@ CAPABILITIES = {
             'dynamicRegistration': True,
             'signatureInformation': {
                 'parameterInformation': {
-                    'labelOffsetSupport': False
+                    'labelOffsetSupport': False, # substring from label
                 },
                 'documentationFormat': ['markdown', 'plaintext']
             }
@@ -118,42 +119,39 @@ CAPABILITIES = {
             'dynamicRegistration': True,
         },
         'references': {
-            'dynamicRegistration': True
+            'dynamicRegistration': True,
         },
-        # incomplete
-        #'callHierarchy':{
-            #'dynamicRegistration': True
-        #},
+        '!!! SEE': '',
+        'callHierarchy':{
+            'dynamicRegistration': True,
+        },
         'declaration': {
             'linkSupport': True,
-            'dynamicRegistration': True
+            'dynamicRegistration': True,
         },
         'typeDefinition': {
             'linkSupport': True,
-            'dynamicRegistration': True
+            'dynamicRegistration': True,
         },
 
         'formatting': {
-            'dynamicRegistration': True
+            'dynamicRegistration': True,
         },
         'rangeFormatting': {
-            'dynamicRegistration': True
+            'dynamicRegistration': True,
         },
-
-        'documentSymbol': {  # Document Symbols Request
+        'documentSymbol': {
             'hierarchicalDocumentSymbolSupport': True,
             'dynamicRegistration': True,
             'symbolKind': {
-                'valueSet': list(SymbolKind)
+                'valueSet': list(SymbolKind),
             }
         },
     },
 
     'window': {
         'showMessage': {
-            #'messageActionItem': {
-                #'additionalPropertiesSupport': True
-            #}
+            #TODO 'messageActionItem':...
         },
         'workDoneProgress': True
     },
@@ -162,17 +160,13 @@ CAPABILITIES = {
         'symbol': {
             'dynamicRegistration': True,
             'symbolKind': {
-                'valueSet': list(SymbolKind)
+                'valueSet': list(SymbolKind),
             }
         },
         'workspaceFolders': True,
 
-        #'workspaceEdit': {
-            #'failureHandling': 'abort',
-            #'documentChanges': True
-        #},
-        #'applyEdit': True,
-        #'executeCommand': {},
+        #TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
+
         'configuration': True,
         'didChangeConfiguration': {
             'dynamicRegistration': True
@@ -223,7 +217,8 @@ class Client:
                 "rootUri": root_uri,
                 "workspaceFolders": workspace_folders,
                 "trace": trace,
-                "capabilities": CAPABILITIES,
+                #"capabilities": CAPABILITIES,
+                "capabilities": {},
             },
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
@@ -263,15 +258,16 @@ class Client:
         assert response.id is not None
         request = self._unanswered_requests.pop(response.id)
 
-        # FIXME: The errors have meanings.
         if response.error is not None:
-            raise RuntimeError("Response error!\n\n" + pprint.pformat(response.error))
+            err = ResponseError.parse_obj(response.error)
+            err.message_id = response.id
+            return err
 
         event: Event
 
         if request.method == "initialize":
             assert self._state == ClientState.WAITING_FOR_INITIALIZED
-            self._send_notification("initialized", params={}) # 'gopls' doesnt recognise 'None' 'params'
+            self._send_notification("initialized", params={}) # params=None doesn't work with gopls
             event = Initialized.parse_obj(response.result)
             self._state = ClientState.NORMAL
 
@@ -302,22 +298,29 @@ class Client:
             )
 
         elif request.method == "textDocument/hover":
-            event = Hover.parse_obj(response.result)
+            if response.result is not None:
+                event = Hover.parse_obj(response.result)
+            else:
+                event = Hover(contents=[])  # null response
             event.message_id = response.id
 
         elif request.method == "textDocument/signatureHelp":
-            event = SignatureHelp.parse_obj(response.result)
+            if response.result is not None:
+                event = SignatureHelp.parse_obj(response.result)
+            else:
+                event = SignatureHelp(signatures=[])  # null response
             event.message_id = response.id
 
         elif request.method == "textDocument/documentSymbol":
             event = parse_obj_as(MDocumentSymbols, response)
+            event.message_id = response.id
 
         #GOTOs
         elif request.method == "textDocument/definition":
             event = parse_obj_as(Definition, response)
 
         elif request.method == "textDocument/references":
-            event = References(result=parse_obj_as(t.List[Location], response.result))
+            event = parse_obj_as(References, response)
         elif request.method == "textDocument/implementation":
             event = parse_obj_as(Implementation, response)
         elif request.method == "textDocument/declaration":
@@ -385,19 +388,22 @@ class Client:
             progress_type = self._progress_tokens_map.get(request.params['token'])
 
             if progress_type == WorkDoneProgress:
-                kind = request.params.get('value', {}).get('kind')
-                if kind == 'begin':
+                kind = request.params['value']['kind']
+                kind = MWorkDoneProgressKind(kind)
+
+                if kind == MWorkDoneProgressKind.BEGIN:
                     return parse_request(WorkDoneProgressBegin)
-                elif kind == 'report':
+                elif kind == MWorkDoneProgressKind.REPORT:
                     return parse_request(WorkDoneProgressReport)
-                elif kind == 'end':
+                elif kind == MWorkDoneProgressKind.END:
                     del self._progress_tokens_map[request.params["token"]]
                     return parse_request(WorkDoneProgressEnd)
 
         elif request.method == "client/registerCapability":
             return parse_request(RegisterCapabilityRequest)
 
-        raise NotImplementedError(request)
+        else:
+            raise NotImplementedError(request)
 
     def recv(self, data: bytes, errors: t.Optional[list] = None) -> t.List[Event]:
         self._recv_buf += data
@@ -545,6 +551,7 @@ class Client:
     def definition(
             self,
             text_document_position: TextDocumentPosition,
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -555,6 +562,7 @@ class Client:
     def declaration(
             self,
             text_document_position: TextDocumentPosition,
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -565,6 +573,7 @@ class Client:
     def typeDefinition(
             self,
             text_document_position: TextDocumentPosition,
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -575,6 +584,7 @@ class Client:
     def references(
             self,
             text_document_position: TextDocumentPosition,
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {
@@ -599,6 +609,7 @@ class Client:
     def implementation(
             self,
             text_document_position: TextDocumentPosition,
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -609,6 +620,7 @@ class Client:
     def workspace_symbol(
             self,
             query: str = '',
+            #TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
