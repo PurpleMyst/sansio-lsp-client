@@ -1,18 +1,52 @@
-import contextlib
 import pathlib
 import platform
 import shutil
 import subprocess
 import sys
 import textwrap
+import re
 
 import pytest
 
 import sansio_lsp_client as lsp
 
+METHOD_DID_OPEN         = 'didOpen'
+METHOD_DID_CLOSE        = 'didClose'
+METHOD_DID_SAVE         = 'didSave'
+METHOD_DID_CHANGE       = 'didChange'
 
-@contextlib.contextmanager
-def run_langserver(project_root, command):
+METHOD_COMPLETION       = 'completion'
+METHOD_HOVER            = 'hover'
+METHOD_SIG_HELP         = 'signatureHelp'
+METHOD_DEFINITION       = 'definition'
+METHOD_REFERENCES       = 'references'
+METHOD_IMPLEMENTATION   = 'implementation'
+METHOD_DECLARATION      = 'declaration'
+METHOD_TYPEDEF          = 'typeDefinition'
+METHOD_DOC_SYMBOLS      = 'documentSymbol'
+METHOD_FORMAT_DOC       = 'formatting'
+METHOD_FORMAT_SEL       = 'rangeFormatting'
+
+def get_meth_text_pos(text, method):
+    """ searches for line: `<code> #<method>-<shift>`
+          - example: `sys.getdefaultencoding() #{METHOD_HOVER}-5`
+            position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng() `
+        returns (x,y)
+    """
+    meth_mark = '#'+method
+    lines = text.splitlines()
+
+    # line index
+    target_line_ind = next(i for i,line in enumerate(lines)  if meth_mark in line)
+    # char index
+    mark_character_ind = lines[target_line_ind].index(meth_mark)
+    m = re.search(f'\\#{method}-(\\d+)', text)
+    target_character_ind = mark_character_ind - int(m.group(1))
+
+    return (target_character_ind, target_line_ind)
+
+
+def start_server(command, project_root):
     with subprocess.Popen(
         command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
     ) as process:
@@ -27,79 +61,169 @@ def run_langserver(project_root, command):
                 assert received
                 yield from lsp_client.recv(received)
 
-        yield (lsp_client, make_event_iterator())
+        yield (lsp_client, project_root, make_event_iterator())
 
 
-def do_stuff_with_a_langserver(tmp_path, filename, file_content, language_id, command):
-    path = tmp_path / filename
-    path.write_text(file_content)
+@pytest.fixture(scope='session')
+def server_pyls(tmp_path_factory):
+    project_root = tmp_path_factory.mktemp('tmp_pyls')
+    command = [sys.executable, "-m", "pyls"]
 
-    with run_langserver(tmp_path, command) as (lsp_client, event_iter):
-        inited = next(event_iter)
-        assert isinstance(inited, lsp.Initialized)
-        lsp_client.did_open(
-            lsp.TextDocumentItem(
-                uri=path.as_uri(), languageId=language_id, text=file_content, version=0
-            )
+    yield from start_server(command, project_root)
+
+
+test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
+
+
+@pytest.fixture(scope='session')
+def server_js(tmp_path_factory):
+    project_root = tmp_path_factory.mktemp('tmp_js')
+    command = [test_langservers / "node_modules/.bin/javascript-typescript-stdio"]
+
+    yield from start_server(command, project_root)
+
+
+def do_server_method(lsp_client, event_iter, method, text, file_uri):
+    def doc_pos(): #SKIP
+        x,y = get_meth_text_pos(text=text, method=method)
+        return lsp.TextDocumentPosition(
+            textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
+            position=lsp.Position(line=y, character=x),
         )
 
-        diagnostics = next(event_iter)
-        assert isinstance(diagnostics, lsp.PublishDiagnostics)
-        assert diagnostics.uri == path.as_uri()
-
+    if method == METHOD_COMPLETION:
         event_id = lsp_client.completion(
-            text_document_position=lsp.TextDocumentPosition(
-                textDocument=lsp.TextDocumentIdentifier(uri=path.as_uri()),
-                position=lsp.Position(
-                    # first line = 0, first column = 0
-                    line=file_content.count("\n"),
-                    character=len(file_content.split("\n")[-1]),
-                ),
-            ),
+            text_document_position=doc_pos(),
             context=lsp.CompletionContext(
                 triggerKind=lsp.CompletionTriggerKind.INVOKED
             ),
         )
-        completions = next(event_iter)
-        assert completions.message_id == event_id
+    elif method == METHOD_HOVER:
+        event_id = lsp_client.hover(text_document_position=doc_pos())
 
-        return (diagnostics, completions)
+    elif method == METHOD_SIG_HELP:
+        event_id = lsp_client.signatureHelp(text_document_position=doc_pos())
+
+    elif method == METHOD_DEFINITION:
+        event_id = lsp_client.definition(text_document_position=doc_pos())
+
+    elif method == METHOD_REFERENCES:
+        event_id = lsp_client.references(text_document_position=doc_pos())
+
+    else:
+        raise NotImplementedError(method)
+
+    resp = next(event_iter)
+    assert not hasattr(resp, 'message_id') or resp.message_id == event_id
+    return resp
 
 
-def test_pyls(tmp_path):
-    diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        "foo.py",
-        textwrap.dedent(
-            """\
-            import sys
-            def do_foo():
-                pass
-            def do_bar():
-                pass
+def test_pyls(server_pyls):
+    lsp_client, project_root, event_iter = server_pyls
 
-            do_"""
-        ),
-        "python",
-        [sys.executable, "-m", "pyls"],
+    '!!! UNDO'
+    import pprint
+
+    text = textwrap.dedent(
+        f"""\
+        import sys
+        def do_foo(): #{METHOD_DEFINITION}-5
+            sys.getdefaultencoding() #{METHOD_HOVER}-5
+        def do_bar(): #{METHOD_REFERENCES}-5
+            sys.intern("hey") #{METHOD_SIG_HELP}-2
+
+        do_ #{METHOD_COMPLETION}-1"""
+    )
+    filename = "foo.py"
+    path = project_root / filename
+    path.write_text(text)
+    language_id = 'python'
+
+    inited = next(event_iter)
+    assert isinstance(inited, lsp.Initialized)
+    lsp_client.did_open(
+        lsp.TextDocumentItem(
+            uri=path.as_uri(), languageId=language_id, text=text, version=0
+        )
     )
 
-    assert [diag.message for diag in diagnostics.diagnostics] == [
-        "'sys' imported but unused",
-        "undefined name 'do_'",
-        "E302 expected 2 blank lines, found 0",
-        "E302 expected 2 blank lines, found 0",
-        "W292 no newline at end of file",
-        "E305 expected 2 blank lines after class or function definition, found 1",
-    ]
+    # Dignostics #####
+    diagnostics = next(event_iter)
+    assert isinstance(diagnostics, lsp.PublishDiagnostics)
+    assert diagnostics.uri == path.as_uri()
 
+    diag_msgs = [diag.message for diag in diagnostics.diagnostics]
+    assert "undefined name 'do_'" in diag_msgs
+    assert 'E302 expected 2 blank lines, found 0' in diag_msgs
+    assert 'W292 no newline at end of file' in diag_msgs
+
+    do_meth_params = {
+        'lsp_client': lsp_client,
+        'event_iter': event_iter,
+        'text': text,
+        'file_uri': path.as_uri(),
+    }
+
+    # Completion #####
+    completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
     assert [item.label for item in completions.completion_list.items] == [
         "do_bar()",
         "do_foo()",
     ]
 
+    # Hover #####
+    hover = do_server_method(**do_meth_params, method=METHOD_HOVER)
+    assert isinstance(hover, lsp.Hover)
+    assert 'getdefaultencoding() -> string\n\nReturn the current default string ' \
+            'encoding used by the Unicode \nimplementation.' in hover.contents
 
-test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
+    # signatureHelp #####
+    sighelp = do_server_method(**do_meth_params, method=METHOD_SIG_HELP)
+    assert isinstance(sighelp, lsp.SignatureHelp)
+
+    assert len(sighelp.signatures) > 0
+    active_sig = sighelp.signatures[sighelp.activeSignature]
+    assert isinstance(active_sig, lsp.SignatureInformation)
+    assert len(active_sig.parameters) > 0
+    assert isinstance(active_sig.parameters[0], lsp.ParameterInformation)
+
+    # definition #####
+    definitions = do_server_method(**do_meth_params, method=METHOD_DEFINITION)
+    assert isinstance(definitions, lsp.Definition)
+
+    assert isinstance(definitions.result, lsp.Location)  or  len(definitions.result) == 1
+    item = definitions.result[0] if isinstance(definitions.result, list) else definitions.result
+    assert isinstance(item, (lsp.Location, lsp.LocationLink))
+    if isinstance(item, lsp.Location):
+        assert item.uri == path.as_uri()
+        definition_line = next(i for i,line in enumerate(text.splitlines()) if METHOD_DEFINITION in line)
+        assert item.range.start.line == definition_line
+    else: # LocationLink
+        raise NotImplementedError('pyls `LocationLink` definition results')
+
+    # references #####
+    refs = do_server_method(**do_meth_params, method=METHOD_REFERENCES)
+    assert isinstance(refs, lsp.References)
+
+    assert len(refs.result) == 1
+    item = refs.result[0]
+    assert isinstance(item, lsp.Location)
+    ref_line = next(i for i,line in enumerate(text.splitlines()) if METHOD_REFERENCES in line)
+    assert item.range.start.line == ref_line
+
+    #print(pprint.pformat(refs, width=130))
+    #assert False
+
+    # implementation #####
+    # declaration #####
+    # typeDefinition #####
+
+    # documentSymbol #####
+    # formatting #####
+    # rangeFormatting #####
+    # workspace/symbol #####
+
+    # prepareCallHierarchy #####
 
 
 @pytest.mark.skipif(
@@ -107,23 +231,50 @@ test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
     reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
-def test_javascript_typescript_langserver(tmp_path):
-    diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        "foo.js",
-        textwrap.dedent(
-            """\
-            function doSomethingWithFoo(x, y) {
-                const blah = x + y;
-                return asdf asdf;
-            }
+def test_javascript_typescript_langserver(server_js):
+    lsp_client, project_root, event_iter = server_js
 
-            doS"""
-        ),
-        "javascript",
-        [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+    '!!! UNDO'
+    import pprint
+
+    text = textwrap.dedent(
+        f"""\
+        function doSomethingWithFoo(x, y) {{
+            const blah = x + y;
+            return asdf asdf;
+        }}
+
+        doS //#{METHOD_COMPLETION}-3"""
     )
+    filename = "foo.js"
+    path = project_root / filename
+    path.write_text(text)
+    language_id = 'javascript'
+
+    inited = next(event_iter)
+    assert isinstance(inited, lsp.Initialized)
+    lsp_client.did_open(
+        lsp.TextDocumentItem(
+            uri=path.as_uri(), languageId=language_id, text=text, version=0
+        )
+    )
+
+    # Dignostics #####
+    diagnostics = next(event_iter)
+    assert isinstance(diagnostics, lsp.PublishDiagnostics)
+    assert diagnostics.uri == path.as_uri()
+
     assert [diag.message for diag in diagnostics.diagnostics] == ["';' expected."]
+
+    do_meth_params = {
+        'lsp_client': lsp_client,
+        'event_iter': event_iter,
+        'text': text,
+        'file_uri': path.as_uri(),
+    }
+
+    # Completion #####
+    completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
     assert "doSomethingWithFoo" in [
         item.label for item in completions.completion_list.items
     ]
@@ -169,10 +320,9 @@ def test_clangd_10(tmp_path):
         [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
-        "Non-void function does not return a value",
+        'Non-void function does not return a value',
         "Use of undeclared identifier 'do_'",
-        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
-        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
+        "Expected '}'",
     ]
     completions = [item.label for item in completions.completion_list.items]
     assert " do_foo()" in completions
@@ -187,11 +337,12 @@ def test_clangd_11(tmp_path):
         [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
-        "Non-void function does not return a value",
+        'Non-void function does not return a value',
         "Use of undeclared identifier 'do_'",
-        "Expected '}'\n\nfoo.c:8:16: note: to match this '{'",
-        "To match this '{'\n\nfoo.c:8:21: error: expected '}'",
+        "Expected '}'",
     ]
     completions = [item.label for item in completions.completion_list.items]
     assert " do_foo()" in completions
     assert " do_bar(char x, long y)" in completions
+
+

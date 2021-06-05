@@ -217,8 +217,7 @@ class Client:
                 "rootUri": root_uri,
                 "workspaceFolders": workspace_folders,
                 "trace": trace,
-                #"capabilities": CAPABILITIES,
-                "capabilities": {},
+                "capabilities": CAPABILITIES,
             },
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
