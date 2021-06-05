@@ -83,6 +83,30 @@ def server_js(tmp_path_factory):
     yield from start_server(command, project_root)
 
 
+@pytest.fixture(scope='session')
+def server_clangd_10(tmp_path_factory):
+    project_root = tmp_path_factory.mktemp('tmp_clangd_10')
+    command = [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"]
+
+    yield from start_server(command, project_root)
+
+
+@pytest.fixture(scope='session')
+def server_clangd_11(tmp_path_factory):
+    project_root = tmp_path_factory.mktemp('tmp_clangd_11')
+    command = [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"]
+
+    yield from start_server(command, project_root)
+
+
+@pytest.fixture(scope='session')
+def server_gopls(tmp_path_factory):
+    project_root = tmp_path_factory.mktemp('tmp_gopls')
+    command = ['gopls']
+
+    yield from start_server(command, project_root)
+
+
 def do_server_method(lsp_client, event_iter, method, text, file_uri):
     def doc_pos(): #SKIP
         x,y = get_meth_text_pos(text=text, method=method)
@@ -118,7 +142,7 @@ def do_server_method(lsp_client, event_iter, method, text, file_uri):
     return resp
 
 
-def test_pyls(server_pyls):
+def _test_pyls(server_pyls):
     lsp_client, project_root, event_iter = server_pyls
 
     '!!! UNDO'
@@ -231,7 +255,7 @@ def test_pyls(server_pyls):
     reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
-def test_javascript_typescript_langserver(server_js):
+def _test_javascript_typescript_langserver(server_js):
     lsp_client, project_root, event_iter = server_js
 
     '!!! UNDO'
@@ -298,51 +322,166 @@ def clangd_decorator(version):
 c_args = (
     "foo.c",
     textwrap.dedent(
-        """\
+        f"""\
         #include <stdio.h>
-        void do_foo(void) {
-        }
-        int do_bar(char x, long y) {
+        void do_foo(void) {{
+        }}
+        int do_bar(char x, long y) {{
             short z = x + y;
-        }
+        }}
 
-        int main(void) { do_"""
+        int main(void) {{ do_ //#{METHOD_COMPLETION}-3"""
     ),
     "c",
 )
 
 
 @clangd_decorator(10)
-def test_clangd_10(tmp_path):
-    diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        *c_args,
-        [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
+def _test_clangd_10(server_clangd_10):
+    lsp_client, project_root, event_iter = server_clangd_10
+
+    '!!! UNDO'
+    import pprint
+
+    filename, text, language_id = c_args
+    path = project_root / filename
+    path.write_text(text)
+
+    inited = next(event_iter)
+    assert isinstance(inited, lsp.Initialized)
+    lsp_client.did_open(
+        lsp.TextDocumentItem(
+            uri=path.as_uri(), languageId=language_id, text=text, version=0
+        )
     )
+
+    # Dignostics #####
+    diagnostics = next(event_iter)
+    assert isinstance(diagnostics, lsp.PublishDiagnostics)
+    assert diagnostics.uri == path.as_uri()
+
     assert [diag.message for diag in diagnostics.diagnostics] == [
         'Non-void function does not return a value',
         "Use of undeclared identifier 'do_'",
         "Expected '}'",
     ]
+
+    do_meth_params = {
+        'lsp_client': lsp_client,
+        'event_iter': event_iter,
+        'text': text,
+        'file_uri': path.as_uri(),
+    }
+
+    # Completion #####
+    completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
     completions = [item.label for item in completions.completion_list.items]
     assert " do_foo()" in completions
     assert " do_bar(char x, long y)" in completions
 
 
 @clangd_decorator(11)
-def test_clangd_11(tmp_path):
-    diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        *c_args,
-        [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
+def _test_clangd_11(server_clangd_11):
+    lsp_client, project_root, event_iter = server_clangd_11
+
+    '!!! UNDO'
+    import pprint
+
+    filename, text, language_id = c_args
+    path = project_root / filename
+    path.write_text(text)
+
+    inited = next(event_iter)
+    assert isinstance(inited, lsp.Initialized)
+    lsp_client.did_open(
+        lsp.TextDocumentItem(
+            uri=path.as_uri(), languageId=language_id, text=text, version=0
+        )
     )
+
+    # Dignostics #####
+    diagnostics = next(event_iter)
+    assert isinstance(diagnostics, lsp.PublishDiagnostics)
+    assert diagnostics.uri == path.as_uri()
+
     assert [diag.message for diag in diagnostics.diagnostics] == [
         'Non-void function does not return a value',
         "Use of undeclared identifier 'do_'",
         "Expected '}'",
     ]
+
+    do_meth_params = {
+        'lsp_client': lsp_client,
+        'event_iter': event_iter,
+        'text': text,
+        'file_uri': path.as_uri(),
+    }
+
+    # Completion #####
+    completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
     completions = [item.label for item in completions.completion_list.items]
     assert " do_foo()" in completions
     assert " do_bar(char x, long y)" in completions
+
+
+
+
+'!!! rork'
+def test_gopls(server_gopls):
+    lsp_client, project_root, event_iter = server_gopls
+
+    '!!! UNDO'
+    import pprint
+
+    text = textwrap.dedent(
+        f"""\
+        package main
+
+        import "fmt"
+
+        func doSomethingWithFoo(x, y) {{
+            blah := x + y
+            return asdf asdf
+        }}
+
+        doS //#{METHOD_COMPLETION}-3"""
+    )
+    filename = "foo.js"
+    path = project_root / filename
+    path.write_text(text)
+    language_id = 'javascript'
+
+    inited = next(event_iter)
+    assert isinstance(inited, lsp.Initialized)
+    lsp_client.did_open(
+        lsp.TextDocumentItem(
+            uri=path.as_uri(), languageId=language_id, text=text, version=0
+        )
+    )
+
+    # Dignostics #####
+    diagnostics = next(event_iter)
+    assert isinstance(diagnostics, lsp.PublishDiagnostics)
+    assert diagnostics.uri == path.as_uri()
+
+    print('\n diag', pprint.pformat(diagnostics, width=130))
+
+    #assert [diag.message for diag in diagnostics.diagnostics] == ["';' expected."]
+
+    do_meth_params = {
+        'lsp_client': lsp_client,
+        'event_iter': event_iter,
+        'text': text,
+        'file_uri': path.as_uri(),
+    }
+
+    # Completion #####
+    completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
+
+    print('\n compl', pprint.pformat(refs, width=130))
+
+    assert "doSomethingWithFoo" in [
+        item.label for item in completions.completion_list.items
+    ]
 
 
