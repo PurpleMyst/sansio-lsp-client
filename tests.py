@@ -224,18 +224,25 @@ class ThreadedServer:
 
 
 def start_server(command, project_root):
+    print(f'~~~start server process: {command}')
     with subprocess.Popen(
         command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
     ) as process:
+
+        print(f'~~~0')
         tserver = ThreadedServer(process, project_root.as_uri())
+        print(f'~~~1')
 
         try:
             yield (tserver, project_root)
+            print(f'~~~2')
 
             if tserver.msgs:
                 print('* unprocessed messages:', ', '.join(type(m).__name__ for m in tserver.msgs))
+            print(f'~~~3')
         finally:
             tserver.stop()
+            print(f'~~~4')
 
 
 @pytest.fixture(scope='session')
@@ -276,7 +283,7 @@ def server_clangd_11(tmp_path_factory):
 @pytest.fixture(scope='session')
 def server_gopls(tmp_path_factory):
     project_root = tmp_path_factory.mktemp('tmp_gopls')
-    command = ['gopls']
+    command = ['goplsz']
 
     # create file(s) before starting server, jic
     for fn,text in files_go.items():
@@ -613,6 +620,7 @@ files_go = {
 
 '!!! rork'
 def test_gopls(server_gopls):
+    print(f'~~~1.a')
     #lsp_client, project_root, event_iter = server_gopls
     tserver, project_root = server_gopls
 
@@ -623,8 +631,10 @@ def test_gopls(server_gopls):
     path = project_root / filename
     text = files_go[filename]
 
+    print(f'~~~1.b')
     # Init #####
     inited = tserver.get_msg_by_type(lsp.Initialized)
+    print(f'~~~1.c')
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -650,4 +660,5 @@ def test_gopls(server_gopls):
         item.label for item in completions.completion_list.items
     ]
 
+    print(f'~~~1.z')
 
