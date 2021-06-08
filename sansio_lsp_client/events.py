@@ -238,5 +238,5 @@ class WorkspaceFolders(ServerRequest):
 class ConfigurationRequest(ServerRequest):
     items: t.List[ConfigurationItem]
 
-    def reply(self, result=t.List[t.Any]) -> None:
+    def reply(self, result: t.List[t.Any] = []) -> None:
         self._client._send_response(id=self._id,  result=result)

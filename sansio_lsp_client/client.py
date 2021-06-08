@@ -121,7 +121,6 @@ CAPABILITIES = {
         'references': {
             'dynamicRegistration': True,
         },
-        '!!! SEE': '',
         'callHierarchy':{
             'dynamicRegistration': True,
         },
