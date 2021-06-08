@@ -37,7 +37,7 @@ jobs:
       - run: |
           pip install poetry && poetry install
       - run: |
-          poetry run pytest --cov=sansio_lsp_client --cov-report=xml:cov.xml -v tests.py
+          poetry run pytest --cov=sansio_lsp_client --cov-report=xml:cov.xml -s -v tests.py
       - uses: actions/upload-artifact@v2
         with:
           name: coverage-report
