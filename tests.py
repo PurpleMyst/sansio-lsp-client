@@ -283,7 +283,7 @@ def server_clangd_11(tmp_path_factory):
 @pytest.fixture(scope='session')
 def server_gopls(tmp_path_factory):
     project_root = tmp_path_factory.mktemp('tmp_gopls')
-    command = ['goplsz']
+    command = ['gopls']
 
     # create file(s) before starting server, jic
     for fn,text in files_go.items():
@@ -334,7 +334,7 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
     return resp
 
 
-def test_pyls(server_pyls):
+def _test_pyls(server_pyls):
     #lsp_client, project_root, event_iter = server_pyls
     tserver, project_root = server_pyls
 
