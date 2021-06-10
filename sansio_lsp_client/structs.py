@@ -59,7 +59,7 @@ class Position(BaseModel):
     character: int
 
     # for sorting
-    def __lt__(self, other: Position) -> bool:
+    def __lt__(self, other: 'Position') -> bool:
         return (
             (self.character < other.character)
             if self.line == other.line
