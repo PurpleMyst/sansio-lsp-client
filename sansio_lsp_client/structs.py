@@ -1,5 +1,6 @@
 import enum
 import typing as t
+from typing_extensions import Literal
 
 from pydantic import BaseModel
 
@@ -23,10 +24,7 @@ class Request(BaseModel):
 
 class Response(BaseModel):
     id: t.Optional[Id]
-    result: t.Optional[ t.Union[
-        t.List[t.Any],
-        JSONDict,
-        ]]
+    result: t.Optional[t.Union[t.List[t.Any], JSONDict]]
     error: t.Optional[JSONDict]
 
 
@@ -62,8 +60,12 @@ class Position(BaseModel):
     character: int
 
     # for sorting
-    def __lt__(self, other):
-        return (self.character < other.character) if self.line == other.line else (self.line < other.line)
+    def __lt__(self, other: "Position") -> bool:
+        return (
+            (self.character < other.character)
+            if self.line == other.line
+            else (self.line < other.line)
+        )
 
 
 class Range(BaseModel):
@@ -92,15 +94,16 @@ class Range(BaseModel):
 class TextDocumentContentChangeEvent(BaseModel):
     text: str
     range: t.Optional[Range]
-    rangeLength: t.Optional[int] # deprecated, use .range
+    rangeLength: t.Optional[int]  # deprecated, use .range
 
-
-    def dict(self):
+    def dict(self) -> t.Dict[str, t.Any]:
         d = super(TextDocumentContentChangeEvent, self).dict()
 
         # vscode-css server requires un-filled values to be absent
-        if self.rangeLength is None:    del d['rangeLength']
-        if self.range is None:          del d['range']
+        if self.rangeLength is None:
+            del d["rangeLength"]
+        if self.range is None:
+            del d["range"]
         return d
 
     @classmethod
@@ -174,6 +177,7 @@ class InsertTextFormat(enum.IntEnum):
     PLAIN_TEXT = 1
     SNIPPET = 2
 
+
 class CompletionItemKind(enum.IntEnum):
     TEXT = 1
     METHOD = 2
@@ -201,8 +205,10 @@ class CompletionItemKind(enum.IntEnum):
     OPERATOR = 24
     TYPEPARAMETER = 25
 
+
 class CompletionItemTag(enum.IntEnum):
     DEPRECATED = 1
+
 
 class CompletionItem(BaseModel):
     label: str
@@ -241,7 +247,7 @@ class Location(BaseModel):
 
 class LocationLink(BaseModel):
     originSelectionRange: t.Optional[Range]
-    targetUri: str # DocumentUri...
+    targetUri: str  # DocumentUri...
     targetRange: Range
     targetSelectionRange: Range
 
@@ -257,9 +263,13 @@ class DiagnosticSeverity(enum.IntEnum):
     INFORMATION = 3
     HINT = 4
 
-    def short_name(self):
-        return {self.ERROR:'Err', self.WARNING:'Wrn', self.INFORMATION:'Inf',
-                    self.HINT:'Hint'}[self]
+    def short_name(self) -> str:
+        return {
+            self.ERROR: "Err",
+            self.WARNING: "Wrn",
+            self.INFORMATION: "Inf",
+            self.HINT: "Hint",
+        }[self]
 
 
 class Diagnostic(BaseModel):
@@ -267,7 +277,7 @@ class Diagnostic(BaseModel):
 
     severity: t.Optional[DiagnosticSeverity]
 
-    code: t.Optional[ t.Union[int, str]]
+    code: t.Optional[t.Union[int, str]]
 
     source: t.Optional[str]
 
@@ -282,9 +292,7 @@ class MarkedString(BaseModel):
 
 
 class ParameterInformation(BaseModel):
-    label: t.Union[
-        str,
-        t.Tuple[int, int]]
+    label: t.Union[str, t.Tuple[int, int]]
     documentation: t.Optional[t.Union[str, MarkupContent]]
 
 
@@ -345,9 +353,8 @@ class CallHierarchyIncomingCall(BaseModel):
 
     class Config:
         # 'from' is an invalid field - re-mapping
-        fields = {
-        'from_': 'from'
-        }
+        fields = {"from_": "from"}
+
 
 class CallHierarchyOutgoingCall(BaseModel):
     to: CallHierarchyItem
@@ -360,7 +367,7 @@ class TextDocumentSyncKind(enum.IntEnum):
     INCREMENTAL = 2
 
 
-class SymbolInformation(BaseModel): # symbols: flat list
+class SymbolInformation(BaseModel):  # symbols: flat list
     name: str
     kind: SymbolKind
     tags: t.Optional[t.List[SymbolTag]]
@@ -368,7 +375,8 @@ class SymbolInformation(BaseModel): # symbols: flat list
     location: Location
     containerName: t.Optional[str]
 
-class DocumentSymbol(BaseModel): # symbols: hierarchy
+
+class DocumentSymbol(BaseModel):  # symbols: hierarchy
     name: str
     detail: t.Optional[str]
     kind: SymbolKind
@@ -377,12 +385,13 @@ class DocumentSymbol(BaseModel): # symbols: hierarchy
     range: Range
     selectionRange: Range
     # https://stackoverflow.com/questions/36193540
-    children: t.Optional[t.List['DocumentSymbol']]
+    children: t.Optional[t.List["DocumentSymbol"]]
 
-    def pos(self):
+    def pos(self) -> t.Tuple[int, int]:
         """ returns (x,y)
         """
         return self.selectionRange.start.character, self.selectionRange.start.line
+
 
 # for `.children` treeeness
 DocumentSymbol.update_forward_refs()
@@ -410,29 +419,34 @@ class WorkspaceFolder(BaseModel):
 class ProgressValue(BaseModel):
     pass
 
+
 class WorkDoneProgressValue(ProgressValue):
     pass
 
+
 class MWorkDoneProgressKind(enum.Enum):
-    BEGIN = 'begin'
-    REPORT = 'report'
-    END = 'end'
+    BEGIN = "begin"
+    REPORT = "report"
+    END = "end"
+
 
 class WorkDoneProgressBeginValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind # .BEGIN
+    kind: Literal[MWorkDoneProgressKind.BEGIN]
     title: str
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
+
 class WorkDoneProgressReportValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind # .REPORT
+    kind: Literal[MWorkDoneProgressKind.REPORT]
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
+
 class WorkDoneProgressEndValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind # .END
+    kind: Literal[MWorkDoneProgressKind.END]
     message: t.Optional[str]
 
 
