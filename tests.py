@@ -407,7 +407,7 @@ def test_pyls(server_pyls):
     # Hover #####
     hover = do_server_method(**do_meth_params, method=METHOD_HOVER)
     #NOTE: crude because response changes from one Python version to another
-    assert 'getdefaultencoding() -> string' in str(hover.contents)
+    assert 'getdefaultencoding() -> str' in str(hover.contents)
 
     # signatureHelp #####
     sighelp = do_server_method(**do_meth_params, method=METHOD_SIG_HELP)
