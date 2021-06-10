@@ -212,7 +212,7 @@ class DocumentFormatting(Event):
 
 
 class WorkspaceFolders(ServerRequest):
-    result: t.Union[t.List[WorkspaceFolder], None]
+    result: t.Optional[t.List[WorkspaceFolder]]
 
     def reply(self, folders: t.Optional[t.List[WorkspaceFolder]] = None) -> None:
         """

@@ -1,5 +1,6 @@
 import enum
 import typing as t
+from typing_extensions import Literal
 
 from pydantic import BaseModel
 
@@ -430,7 +431,7 @@ class MWorkDoneProgressKind(enum.Enum):
 
 
 class WorkDoneProgressBeginValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind  # .BEGIN
+    kind: Literal[MWorkDoneProgressKind.BEGIN]
     title: str
     cancellable: t.Optional[bool]
     message: t.Optional[str]
@@ -438,14 +439,14 @@ class WorkDoneProgressBeginValue(WorkDoneProgressValue):
 
 
 class WorkDoneProgressReportValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind  # .REPORT
+    kind: Literal[MWorkDoneProgressKind.REPORT]
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
 
 class WorkDoneProgressEndValue(WorkDoneProgressValue):
-    kind: MWorkDoneProgressKind  # .END
+    kind: Literal[MWorkDoneProgressKind.END]
     message: t.Optional[str]
 
 

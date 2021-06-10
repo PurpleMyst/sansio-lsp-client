@@ -2,6 +2,7 @@ import os
 import enum
 import pprint
 import typing as t
+import logging
 
 from pydantic import parse_obj_as, ValidationError
 
@@ -66,6 +67,8 @@ from .structs import (
     MWorkDoneProgressKind,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
+
+logger = logging.getLogger(__name__)
 
 
 class ClientState(enum.Enum):
@@ -391,9 +394,8 @@ class Client:
                     events.append(self._handle_request(message))
                 else:
                     raise RuntimeError("nobody will ever see this, i hope")
-            except Exception as ex:
-                if errors is not None:
-                    errors.append(ex)
+            except:
+                logger.exception("Failed to process received message: %s", message)
 
         return events
 
