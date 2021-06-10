@@ -47,7 +47,7 @@ class ResponseError(Event):
         str,
         int, float,
         bool,
-        list,
+        t.List[t.Any],
         JSONDict,
         None,
     ]]
@@ -156,7 +156,7 @@ class SignatureHelp(Event):
     activeSignature: t.Optional[int]
     activeParameter: t.Optional[int]
 
-    def get_hint_str(self):
+    def get_hint_str(self) -> t.Optional[str]:
         if len(self.signatures) == 0:
             return None
         active_sig = self.activeSignature or 0

@@ -62,7 +62,7 @@ class Position(BaseModel):
     character: int
 
     # for sorting
-    def __lt__(self, other):
+    def __lt__(self, other: Position) -> bool:
         return (self.character < other.character) if self.line == other.line else (self.line < other.line)
 
 
@@ -95,7 +95,7 @@ class TextDocumentContentChangeEvent(BaseModel):
     rangeLength: t.Optional[int] # deprecated, use .range
 
 
-    def dict(self):
+    def dict(self) -> t.Dict[str, t.Any]:
         d = super(TextDocumentContentChangeEvent, self).dict()
 
         # vscode-css server requires un-filled values to be absent
@@ -257,7 +257,7 @@ class DiagnosticSeverity(enum.IntEnum):
     INFORMATION = 3
     HINT = 4
 
-    def short_name(self):
+    def short_name(self) -> str:
         return {self.ERROR:'Err', self.WARNING:'Wrn', self.INFORMATION:'Inf',
                     self.HINT:'Hint'}[self]
 
@@ -379,7 +379,7 @@ class DocumentSymbol(BaseModel): # symbols: hierarchy
     # https://stackoverflow.com/questions/36193540
     children: t.Optional[t.List['DocumentSymbol']]
 
-    def pos(self):
+    def pos(self) -> t.Tuple[int, int]:
         """ returns (x,y)
         """
         return self.selectionRange.start.character, self.selectionRange.start.line

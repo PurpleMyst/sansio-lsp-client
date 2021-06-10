@@ -62,6 +62,8 @@ from .structs import (
     FormattingOptions,
     Range,
     WorkspaceFolder,
+    ProgressToken,
+    MWorkDoneProgressKind,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -206,7 +208,7 @@ class Client:
 
         # prepare workspace folders for sending -- to `dict`
         if workspace_folders:
-            workspace_folders = [f.dict() for f in workspace_folders]
+            workspace_folders = [f.dict() for f in workspace_folders] # type: ignore
 
         # We'll just immediately send off an "initialize" request.
         self._send_request(
@@ -226,7 +228,7 @@ class Client:
         return self._state
 
     @property
-    def is_initialized(self):
+    def is_initialized(self) -> bool:
         return (self._state != ClientState.NOT_INITIALIZED
                     and self._state != ClientState.WAITING_FOR_INITIALIZED)
 
@@ -397,13 +399,15 @@ class Client:
                     del self._progress_tokens_map[request.params["token"]]
                     return parse_request(WorkDoneProgressEnd)
 
+            raise NotImplementedError(request)
+
         elif request.method == "client/registerCapability":
             return parse_request(RegisterCapabilityRequest)
 
         else:
             raise NotImplementedError(request)
 
-    def recv(self, data: bytes, errors: t.Optional[list] = None) -> t.List[Event]:
+    def recv(self, data: bytes, errors: t.Optional[t.List[t.Any]] = None) -> t.List[Event]:
         self._recv_buf += data
 
         # _parse_messages deletes consumed data from self._recv_buf
