@@ -377,9 +377,7 @@ class Client:
         else:
             raise NotImplementedError(request)
 
-    def recv(
-        self, data: bytes, errors: t.Optional[t.List[t.Any]] = None
-    ) -> t.List[Event]:
+    def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
 
         # _parse_messages deletes consumed data from self._recv_buf
