@@ -16,41 +16,41 @@ import pytest
 import sansio_lsp_client as lsp
 
 
-LOG_IN = False   # log data received from server to stdout
-LOG_OUT = False # - sent - to stdout
+LOG_IN = False  # log data received from server to stdout
+LOG_OUT = False  # - sent - to stdout
 
 
-METHOD_DID_OPEN         = 'didOpen'
-METHOD_DID_CLOSE        = 'didClose'
-METHOD_DID_SAVE         = 'didSave'
-METHOD_DID_CHANGE       = 'didChange'
+METHOD_DID_OPEN = "didOpen"
+METHOD_DID_CLOSE = "didClose"
+METHOD_DID_SAVE = "didSave"
+METHOD_DID_CHANGE = "didChange"
 
-METHOD_COMPLETION       = 'completion'
-METHOD_HOVER            = 'hover'
-METHOD_SIG_HELP         = 'signatureHelp'
-METHOD_DEFINITION       = 'definition'
-METHOD_REFERENCES       = 'references'
-METHOD_IMPLEMENTATION   = 'implementation'
-METHOD_DECLARATION      = 'declaration'
-METHOD_TYPEDEF          = 'typeDefinition'
-METHOD_DOC_SYMBOLS      = 'documentSymbol'
-METHOD_FORMAT_DOC       = 'formatting'
-METHOD_FORMAT_SEL       = 'rangeFormatting'
+METHOD_COMPLETION = "completion"
+METHOD_HOVER = "hover"
+METHOD_SIG_HELP = "signatureHelp"
+METHOD_DEFINITION = "definition"
+METHOD_REFERENCES = "references"
+METHOD_IMPLEMENTATION = "implementation"
+METHOD_DECLARATION = "declaration"
+METHOD_TYPEDEF = "typeDefinition"
+METHOD_DOC_SYMBOLS = "documentSymbol"
+METHOD_FORMAT_DOC = "formatting"
+METHOD_FORMAT_SEL = "rangeFormatting"
 
-METHOD_WS_FOLDERS = 'workspace/workspaceFolders'
+METHOD_WS_FOLDERS = "workspace/workspaceFolders"
 
 RESPONSE_TYPES = {
-    METHOD_COMPLETION     : lsp.Completion,
-    METHOD_HOVER          : lsp.Hover,
-    METHOD_SIG_HELP       : lsp.SignatureHelp,
-    METHOD_DEFINITION     : lsp.Definition,
-    METHOD_REFERENCES     : lsp.References,
-    METHOD_IMPLEMENTATION : lsp.Implementation,
-    METHOD_DECLARATION    : lsp.Declaration,
-    METHOD_TYPEDEF        : lsp.TypeDefinition,
-    METHOD_DOC_SYMBOLS    : lsp.MDocumentSymbols,
-    METHOD_FORMAT_DOC     : lsp.DocumentFormatting,
-    METHOD_FORMAT_SEL     : lsp.DocumentFormatting,
+    METHOD_COMPLETION: lsp.Completion,
+    METHOD_HOVER: lsp.Hover,
+    METHOD_SIG_HELP: lsp.SignatureHelp,
+    METHOD_DEFINITION: lsp.Definition,
+    METHOD_REFERENCES: lsp.References,
+    METHOD_IMPLEMENTATION: lsp.Implementation,
+    METHOD_DECLARATION: lsp.Declaration,
+    METHOD_TYPEDEF: lsp.TypeDefinition,
+    METHOD_DOC_SYMBOLS: lsp.MDocumentSymbols,
+    METHOD_FORMAT_DOC: lsp.DocumentFormatting,
+    METHOD_FORMAT_SEL: lsp.DocumentFormatting,
 }
 
 
@@ -77,10 +77,10 @@ def parse_headers(fp, _class=client.HTTPMessage):
         headers.append(line)
         if len(headers) > _MAXHEADERS:
             raise Exception("HTTPException: got more than %d headers" % _MAXHEADERS)
-        if line in (b'\r\n', b'\n', b''):
+        if line in (b"\r\n", b"\n", b""):
             break
-    header_bytes = b''.join(headers)
-    hstring = header_bytes.decode('iso-8859-1')
+    header_bytes = b"".join(headers)
+    hstring = header_bytes.decode("iso-8859-1")
     return email.parser.Parser(_class=_class).parsestr(hstring), header_bytes
 
 
@@ -90,14 +90,14 @@ def get_meth_text_pos(text, method):
             position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng() `
         returns (x,y)
     """
-    meth_mark = '#'+method
+    meth_mark = "#" + method
     lines = text.splitlines()
 
     # line index
-    target_line_ind = next(i for i,line in enumerate(lines)  if meth_mark in line)
+    target_line_ind = next(i for i, line in enumerate(lines) if meth_mark in line)
     # char index
     mark_character_ind = lines[target_line_ind].index(meth_mark)
-    m = re.search(f'\\#{method}-(\\d+)', text)
+    m = re.search(f"\\#{method}-(\\d+)", text)
     target_character_ind = mark_character_ind - int(m.group(1))
 
     return (target_character_ind, target_line_ind)
@@ -115,9 +115,9 @@ class ThreadedServer:
         self.process = process
         self.root_uri = root_uri
         self.lsp_client = lsp.Client(
-                root_uri=root_uri,
-                workspace_folders=[ lsp.WorkspaceFolder(uri=self.root_uri, name='Root'), ],
-                trace="verbose",
+            root_uri=root_uri,
+            workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")],
+            trace="verbose",
         )
         self.msgs = []
 
@@ -127,8 +127,12 @@ class ThreadedServer:
         self._read_q = queue.Queue()
         self._send_q = queue.Queue()
 
-        self.reader_thread = threading.Thread(target=self._read_loop, name='lsp-reader', daemon=True)
-        self.writer_thread = threading.Thread(target=self._send_loop, name='lsp-writer', daemon=True)
+        self.reader_thread = threading.Thread(
+            target=self._read_loop, name="lsp-reader", daemon=True
+        )
+        self.writer_thread = threading.Thread(
+            target=self._send_loop, name="lsp-writer", daemon=True
+        )
 
         self.reader_thread.start()
         self.writer_thread.start()
@@ -145,17 +149,17 @@ class ThreadedServer:
             while self._pout:
                 headers, header_bytes = parse_headers(self._pout)  # type: ignore
 
-                LOG_IN and print(f'\n <<< received: {headers}\n')
+                LOG_IN and print(f"\n <<< received: {headers}\n")
 
-                if header_bytes == b'':
+                if header_bytes == b"":
                     break
 
                 body = self._pout.read(int(headers.get("Content-Length")))
-                LOG_IN and print(f'   < received: {body}\n')
+                LOG_IN and print(f"   < received: {body}\n")
                 self._read_q.put(header_bytes + body)
         except Exception as ex:
             self.exception = ex
-        self._send_q.put_nowait(None) # stop send_loop()
+        self._send_q.put_nowait(None)  # stop send_loop()
 
     # threaded
     def _send_loop(self):
@@ -166,7 +170,7 @@ class ThreadedServer:
                 if buf is None:
                     break
 
-                LOG_OUT and print(f'\nsending: {buf}\n')
+                LOG_OUT and print(f"\nsending: {buf}\n")
 
                 self._pin.write(buf)
                 self._pin.flush()
@@ -199,15 +203,14 @@ class ThreadedServer:
             msg.reply()
 
         elif isinstance(msg, lsp.WorkspaceFolders):
-            msg.reply([ lsp.WorkspaceFolder(uri=self.root_uri, name='Root'), ])
+            msg.reply([lsp.WorkspaceFolder(uri=self.root_uri, name="Root")])
 
         else:
-            print(f'Cant autoreply: {type(msg)}')
+            print(f"Cant autoreply: {type(msg)}")
 
     def _process_qs(self):
         self._queue_data_to_send()
         self._read_data_received()
-
 
     def get_msg_by_type(self, _type, timeout=5):
         end_time = time.time() + timeout
@@ -224,43 +227,51 @@ class ThreadedServer:
                     return msg
 
             time.sleep(0.05)
-        #end while
+        # end while
 
-        raise Exception(f'Didn`t receive "{_type}" in time; have: {[type(m).__name__ for m in self.msgs]}')
+        raise Exception(
+            f'Didn`t receive "{_type}" in time; have: {[type(m).__name__ for m in self.msgs]}'
+        )
 
     def stop(self):
-        self.lsp_client.shutdown() # send shutdown...
-        self.get_msg_by_type(lsp.Shutdown) # receive shutdown...
-        self.lsp_client.exit() # send exit...
-        self._process_qs() # give data to send-thread
+        self.lsp_client.shutdown()  # send shutdown...
+        self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
+        self.lsp_client.exit()  # send exit...
+        self._process_qs()  # give data to send-thread
 
 
 test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
 
 
-SERVER_PYLS = 'pyls'
-SERVER_JS = 'js'
-SERVER_CLANGD_10 = 'clangd_10'
-SERVER_CLANGD_11 = 'clangd_11'
-SERVER_GOPLS = 'gopls'
+SERVER_PYLS = "pyls"
+SERVER_JS = "js"
+SERVER_CLANGD_10 = "clangd_10"
+SERVER_CLANGD_11 = "clangd_11"
+SERVER_GOPLS = "gopls"
 
 SERVER_COMMANDS = {
-    SERVER_PYLS       : lambda: [sys.executable, "-m", "pyls"],
-    SERVER_JS         : lambda: [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
-    SERVER_CLANGD_10  : lambda: [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
-    SERVER_CLANGD_11  : lambda: [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
-    SERVER_GOPLS      : lambda: ['gopls'],
+    SERVER_PYLS: lambda: [sys.executable, "-m", "pyls"],
+    SERVER_JS: lambda: [
+        test_langservers / "node_modules/.bin/javascript-typescript-stdio"
+    ],
+    SERVER_CLANGD_10: lambda: [
+        next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"
+    ],
+    SERVER_CLANGD_11: lambda: [
+        next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"
+    ],
+    SERVER_GOPLS: lambda: ["gopls"],
 }
 
 
 def start_server(server_name, tmp_path_factory):
     command = SERVER_COMMANDS[server_name]
     command = command()
-    project_root = tmp_path_factory.mktemp('tmp_'+server_name)
+    project_root = tmp_path_factory.mktemp("tmp_" + server_name)
 
     if server_name == SERVER_GOPLS:
         # create file(s) before starting server, jic
-        for fn,text in files_go.items():
+        for fn, text in files_go.items():
             path = project_root / fn
             path.write_text(text)
 
@@ -273,39 +284,42 @@ def start_server(server_name, tmp_path_factory):
             yield (tserver, project_root)
 
             if tserver.msgs:
-                print('* unprocessed messages:', ', '.join(type(m).__name__ for m in tserver.msgs))
+                print(
+                    "* unprocessed messages:",
+                    ", ".join(type(m).__name__ for m in tserver.msgs),
+                )
         finally:
             tserver.stop()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def server_pyls(tmp_path_factory):
     yield from start_server(SERVER_PYLS, tmp_path_factory)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def server_js(tmp_path_factory):
     yield from start_server(SERVER_JS, tmp_path_factory)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def server_clangd_10(tmp_path_factory):
     yield from start_server(SERVER_CLANGD_10, tmp_path_factory)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def server_clangd_11(tmp_path_factory):
     yield from start_server(SERVER_CLANGD_11, tmp_path_factory)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def server_gopls(tmp_path_factory):
     yield from start_server(SERVER_GOPLS, tmp_path_factory)
 
 
 def do_server_method(tserver, method, text, file_uri, response_type=None):
-    def doc_pos(): #SKIP
-        x,y = get_meth_text_pos(text=text, method=method)
+    def doc_pos():  # SKIP
+        x, y = get_meth_text_pos(text=text, method=method)
         return lsp.TextDocumentPosition(
             textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
             position=lsp.Position(line=y, character=x),
@@ -313,7 +327,6 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
 
     if not response_type:
         response_type = RESPONSE_TYPES[method]
-
 
     if method == METHOD_COMPLETION:
         event_id = tserver.lsp_client.completion(
@@ -352,7 +365,7 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
 
     # "blocking" -- will wait for message
     resp = tserver.get_msg_by_type(response_type)
-    assert not hasattr(resp, 'message_id') or resp.message_id == event_id
+    assert not hasattr(resp, "message_id") or resp.message_id == event_id
     return resp
 
 
@@ -372,7 +385,7 @@ def test_pyls(server_pyls):
     filename = "foo.py"
     path = project_root / filename
     path.write_text(text)
-    language_id = 'python'
+    language_id = "python"
 
     inited = tserver.get_msg_by_type(lsp.Initialized)
 
@@ -388,14 +401,10 @@ def test_pyls(server_pyls):
 
     diag_msgs = [diag.message for diag in diagnostics.diagnostics]
     assert "undefined name 'do_'" in diag_msgs
-    assert 'E302 expected 2 blank lines, found 0' in diag_msgs
-    assert 'W292 no newline at end of file' in diag_msgs
+    assert "E302 expected 2 blank lines, found 0" in diag_msgs
+    assert "W292 no newline at end of file" in diag_msgs
 
-    do_meth_params = {
-        'tserver': tserver,
-        'text': text,
-        'file_uri': path.as_uri(),
-    }
+    do_meth_params = {"tserver": tserver, "text": text, "file_uri": path.as_uri()}
 
     # Completion #####
     completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
@@ -406,8 +415,8 @@ def test_pyls(server_pyls):
 
     # Hover #####
     hover = do_server_method(**do_meth_params, method=METHOD_HOVER)
-    #NOTE: crude because response changes from one Python version to another
-    assert 'getdefaultencoding() -> str' in str(hover.contents)
+    # NOTE: crude because response changes from one Python version to another
+    assert "getdefaultencoding() -> str" in str(hover.contents)
 
     # signatureHelp #####
     sighelp = do_server_method(**do_meth_params, method=METHOD_SIG_HELP)
@@ -421,15 +430,21 @@ def test_pyls(server_pyls):
     # definition #####
     definitions = do_server_method(**do_meth_params, method=METHOD_DEFINITION)
 
-    assert isinstance(definitions.result, lsp.Location)  or  len(definitions.result) == 1
-    item = definitions.result[0] if isinstance(definitions.result, list) else definitions.result
+    assert isinstance(definitions.result, lsp.Location) or len(definitions.result) == 1
+    item = (
+        definitions.result[0]
+        if isinstance(definitions.result, list)
+        else definitions.result
+    )
     assert isinstance(item, (lsp.Location, lsp.LocationLink))
     if isinstance(item, lsp.Location):
         assert item.uri == path.as_uri()
-        definition_line = next(i for i,line in enumerate(text.splitlines()) if METHOD_DEFINITION in line)
+        definition_line = next(
+            i for i, line in enumerate(text.splitlines()) if METHOD_DEFINITION in line
+        )
         assert item.range.start.line == definition_line
-    else: # LocationLink
-        raise NotImplementedError('pyls `LocationLink` definition results')
+    else:  # LocationLink
+        raise NotImplementedError("pyls `LocationLink` definition results")
 
     # references #####
     refs = do_server_method(**do_meth_params, method=METHOD_REFERENCES)
@@ -437,14 +452,16 @@ def test_pyls(server_pyls):
     assert len(refs.result) == 1
     item = refs.result[0]
     assert isinstance(item, lsp.Location)
-    ref_line = next(i for i,line in enumerate(text.splitlines()) if METHOD_REFERENCES in line)
+    ref_line = next(
+        i for i, line in enumerate(text.splitlines()) if METHOD_REFERENCES in line
+    )
     assert item.range.start.line == ref_line
 
     # documentSymbol #####
     doc_symbols = do_server_method(**do_meth_params, method=METHOD_DOC_SYMBOLS)
     assert len(doc_symbols.result) == 3
     symb_names = {s.name for s in doc_symbols.result}
-    assert symb_names == {'sys', 'do_foo', 'do_bar'}
+    assert symb_names == {"sys", "do_foo", "do_bar"}
 
     # formatting #####
     tserver.lsp_client.formatting(
@@ -457,7 +474,7 @@ def test_pyls(server_pyls):
     # Error -- method not supported by server #####
     tserver.lsp_client.workspace_symbol()
     err = tserver.get_msg_by_type(lsp.ResponseError)
-    assert err.message == 'Method Not Found: workspace/symbol'
+    assert err.message == "Method Not Found: workspace/symbol"
 
 
 @pytest.mark.skipif(
@@ -480,7 +497,7 @@ def test_javascript_typescript_langserver(server_js):
     filename = "foo.js"
     path = project_root / filename
     path.write_text(text)
-    language_id = 'javascript'
+    language_id = "javascript"
 
     # Init #####
     inited = tserver.get_msg_by_type(lsp.Initialized)
@@ -496,12 +513,7 @@ def test_javascript_typescript_langserver(server_js):
     assert diagnostics.uri == path.as_uri()
     assert [diag.message for diag in diagnostics.diagnostics] == ["';' expected."]
 
-
-    do_meth_params = {
-        'tserver': tserver,
-        'text': text,
-        'file_uri': path.as_uri(),
-    }
+    do_meth_params = {"tserver": tserver, "text": text, "file_uri": path.as_uri()}
 
     # Completion #####
     completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
@@ -564,17 +576,12 @@ def test_clangd_10(server_clangd_10):
     diagnostics = tserver.get_msg_by_type(lsp.PublishDiagnostics)
     assert diagnostics.uri == path.as_uri()
     assert [diag.message for diag in diagnostics.diagnostics] == [
-        'Non-void function does not return a value',
+        "Non-void function does not return a value",
         "Use of undeclared identifier 'do_'",
         "Expected '}'",
     ]
 
-
-    do_meth_params = {
-        'tserver': tserver,
-        'text': text,
-        'file_uri': path.as_uri(),
-    }
+    do_meth_params = {"tserver": tserver, "text": text, "file_uri": path.as_uri()}
 
     # Completion #####
     completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
@@ -604,17 +611,12 @@ def test_clangd_11(server_clangd_11):
     diagnostics = tserver.get_msg_by_type(lsp.PublishDiagnostics)
     assert diagnostics.uri == path.as_uri()
     assert [diag.message for diag in diagnostics.diagnostics] == [
-        'Non-void function does not return a value',
+        "Non-void function does not return a value",
         "Use of undeclared identifier 'do_'",
         "Expected '}'",
     ]
 
-
-    do_meth_params = {
-        'tserver': tserver,
-        'text': text,
-        'file_uri': path.as_uri(),
-    }
+    do_meth_params = {"tserver": tserver, "text": text, "file_uri": path.as_uri()}
 
     # Completion #####
     completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
@@ -623,9 +625,9 @@ def test_clangd_11(server_clangd_11):
     assert " do_bar(char x, long y)" in completions
 
     # workspace/symbol #####
-    #TODO - empty for some reason
-    #tserver.lsp_client.workspace_symbol()
-    #w_symb = tserver.get_msg_by_type(lsp.MWorkspaceSymbols)
+    # TODO - empty for some reason
+    # tserver.lsp_client.workspace_symbol()
+    # w_symb = tserver.get_msg_by_type(lsp.MWorkspaceSymbols)
 
     # declaration #####
     declaration = do_server_method(**do_meth_params, method=METHOD_DECLARATION)
@@ -633,9 +635,8 @@ def test_clangd_11(server_clangd_11):
     assert declaration.result[0].uri == path.as_uri()
 
 
-
 files_go = {
-    'foo.go': textwrap.dedent(
+    "foo.go": textwrap.dedent(
         f"""\
         package main
 
@@ -657,23 +658,24 @@ files_go = {
         }}
         var s1 = doS //#{METHOD_COMPLETION}-3"""
     ),
-    'go.mod': textwrap.dedent(
+    "go.mod": textwrap.dedent(
         """\
         module example.com/hellp
 
         go 1.10
         """
-    )
+    ),
 }
 
+
 def test_gopls(server_gopls):
-    #lsp_client, project_root, event_iter = server_gopls
+    # lsp_client, project_root, event_iter = server_gopls
     tserver, project_root = server_gopls
 
-    language_id = 'go'
+    language_id = "go"
 
     # get text from `files_go` where file ends with '.go'
-    filename = next(fn for fn in files_go  if fn.endswith('.go'))
+    filename = next(fn for fn in files_go if fn.endswith(".go"))
     path = project_root / filename
     text = files_go[filename]
 
@@ -689,14 +691,11 @@ def test_gopls(server_gopls):
     # Dignostics #####
     diagnostics = tserver.get_msg_by_type(lsp.PublishDiagnostics)
     assert diagnostics.uri == path.as_uri()
-    assert [diag.message for diag in diagnostics.diagnostics] == ["expected ';', found asdf"]
+    assert [diag.message for diag in diagnostics.diagnostics] == [
+        "expected ';', found asdf"
+    ]
 
-
-    do_meth_params = {
-        'tserver': tserver,
-        'text': text,
-        'file_uri': path.as_uri(),
-    }
+    do_meth_params = {"tserver": tserver, "text": text, "file_uri": path.as_uri()}
 
     # Completion #####
     completions = do_server_method(**do_meth_params, method=METHOD_COMPLETION)
@@ -705,9 +704,9 @@ def test_gopls(server_gopls):
     ]
 
     # implementation #####
-    #TODO - null result for some reason
-    #implementation = do_server_method(**do_meth_params, method=METHOD_IMPLEMENTATION)
-    #print(f' implementation: {implementation}')
+    # TODO - null result for some reason
+    # implementation = do_server_method(**do_meth_params, method=METHOD_IMPLEMENTATION)
+    # print(f' implementation: {implementation}')
 
     # typeDefinition #####
     typedef = do_server_method(**do_meth_params, method=METHOD_TYPEDEF)

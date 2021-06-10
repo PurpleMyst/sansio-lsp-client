@@ -20,12 +20,12 @@ def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
 
 
 def _make_request(
-            method: str,
-            params: t.Optional[JSONDict] = None,
-            id: t.Optional[int] = None,
-            *,
-            encoding: str = "utf-8",
-        ) -> bytes:
+    method: str,
+    params: t.Optional[JSONDict] = None,
+    id: t.Optional[int] = None,
+    *,
+    encoding: str = "utf-8",
+) -> bytes:
     request = bytearray()
 
     # Set up the actual JSONRPC content and encode it.

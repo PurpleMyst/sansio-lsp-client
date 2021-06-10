@@ -76,102 +76,64 @@ class ClientState(enum.Enum):
     SHUTDOWN = enum.auto()
     EXITED = enum.auto()
 
-#NOTE: Server capabilitie: resolveProvider - info about completion item -- can't use?
+
+# NOTE: Server capabilitie: resolveProvider - info about completion item -- can't use?
 CAPABILITIES = {
-    'textDocument': {
-        'synchronization': {
-            'didSave': True,
+    "textDocument": {
+        "synchronization": {
+            "didSave": True,
             #'willSaveWaitUntil': True,
-            'dynamicRegistration': True,
+            "dynamicRegistration": True,
             #'willSave': True
         },
-
-        'publishDiagnostics': {
-            'relatedInformation': True
+        "publishDiagnostics": {"relatedInformation": True},
+        "completion": {
+            "dynamicRegistration": True,
+            "completionItem": {"snippetSupport": False},
+            "completionItemKind": {"valueSet": list(CompletionItemKind)},
         },
-
-        'completion': {
-            'dynamicRegistration': True,
-            'completionItem': {
-                'snippetSupport': False
-            },
-            'completionItemKind': {
-                'valueSet': list(CompletionItemKind),
-            }
+        "hover": {
+            "dynamicRegistration": True,
+            "contentFormat": ["markdown", "plaintext"],
         },
-        'hover': {
-            'dynamicRegistration': True,
-            'contentFormat': ['markdown', 'plaintext'],
-        },
-        'definition': {
-            'dynamicRegistration': True,
-            'linkSupport': True,
-        },
-        'signatureHelp': {
-            'dynamicRegistration': True,
-            'signatureInformation': {
-                'parameterInformation': {
-                    'labelOffsetSupport': False, # substring from label
+        "definition": {"dynamicRegistration": True, "linkSupport": True},
+        "signatureHelp": {
+            "dynamicRegistration": True,
+            "signatureInformation": {
+                "parameterInformation": {
+                    "labelOffsetSupport": False  # substring from label
                 },
-                'documentationFormat': ['markdown', 'plaintext']
-            }
+                "documentationFormat": ["markdown", "plaintext"],
+            },
         },
-        'implementation': {
-            'linkSupport': True,
-            'dynamicRegistration': True,
-        },
-        'references': {
-            'dynamicRegistration': True,
-        },
-        'callHierarchy':{
-            'dynamicRegistration': True,
-        },
-        'declaration': {
-            'linkSupport': True,
-            'dynamicRegistration': True,
-        },
-        'typeDefinition': {
-            'linkSupport': True,
-            'dynamicRegistration': True,
-        },
-
-        'formatting': {
-            'dynamicRegistration': True,
-        },
-        'rangeFormatting': {
-            'dynamicRegistration': True,
-        },
-        'documentSymbol': {
-            'hierarchicalDocumentSymbolSupport': True,
-            'dynamicRegistration': True,
-            'symbolKind': {
-                'valueSet': list(SymbolKind),
-            }
+        "implementation": {"linkSupport": True, "dynamicRegistration": True},
+        "references": {"dynamicRegistration": True},
+        "callHierarchy": {"dynamicRegistration": True},
+        "declaration": {"linkSupport": True, "dynamicRegistration": True},
+        "typeDefinition": {"linkSupport": True, "dynamicRegistration": True},
+        "formatting": {"dynamicRegistration": True},
+        "rangeFormatting": {"dynamicRegistration": True},
+        "documentSymbol": {
+            "hierarchicalDocumentSymbolSupport": True,
+            "dynamicRegistration": True,
+            "symbolKind": {"valueSet": list(SymbolKind)},
         },
     },
-
-    'window': {
-        'showMessage': {
-            #TODO 'messageActionItem':...
+    "window": {
+        "showMessage": {
+            # TODO 'messageActionItem':...
         },
-        'workDoneProgress': True
+        "workDoneProgress": True,
     },
-
-    'workspace': {
-        'symbol': {
-            'dynamicRegistration': True,
-            'symbolKind': {
-                'valueSet': list(SymbolKind),
-            }
+    "workspace": {
+        "symbol": {
+            "dynamicRegistration": True,
+            "symbolKind": {"valueSet": list(SymbolKind)},
         },
-        'workspaceFolders': True,
-
-        #TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
-
-        'configuration': True,
-        'didChangeConfiguration': {
-            'dynamicRegistration': True
-        }
+        "workspaceFolders": True,
+        # TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
+        "configuration": True,
+        "didChangeConfiguration": {"dynamicRegistration": True},
     },
 }
 
@@ -208,7 +170,7 @@ class Client:
 
         # prepare workspace folders for sending -- to `dict`
         if workspace_folders:
-            workspace_folders = [f.dict() for f in workspace_folders] # type: ignore
+            workspace_folders = [f.dict() for f in workspace_folders]  # type: ignore
 
         # We'll just immediately send off an "initialize" request.
         self._send_request(
@@ -229,8 +191,10 @@ class Client:
 
     @property
     def is_initialized(self) -> bool:
-        return (self._state != ClientState.NOT_INITIALIZED
-                    and self._state != ClientState.WAITING_FOR_INITIALIZED)
+        return (
+            self._state != ClientState.NOT_INITIALIZED
+            and self._state != ClientState.WAITING_FOR_INITIALIZED
+        )
 
     def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
         id = self._id_counter
@@ -267,7 +231,9 @@ class Client:
 
         if request.method == "initialize":
             assert self._state == ClientState.WAITING_FOR_INITIALIZED
-            self._send_notification("initialized", params={}) # params=None doesn't work with gopls
+            self._send_notification(
+                "initialized", params={}
+            )  # params=None doesn't work with gopls
             event = Initialized.parse_obj(response.result)
             self._state = ClientState.NORMAL
 
@@ -315,7 +281,7 @@ class Client:
             event = parse_obj_as(MDocumentSymbols, response)
             event.message_id = response.id
 
-        #GOTOs
+        # GOTOs
         elif request.method == "textDocument/definition":
             event = parse_obj_as(Definition, response)
 
@@ -331,8 +297,10 @@ class Client:
         elif request.method == "textDocument/prepareCallHierarchy":
             event = parse_obj_as(MCallHierarchItems, response)
 
-        elif (request.method == "textDocument/formatting"
-                or request.method == "textDocument/rangeFormatting"):
+        elif (
+            request.method == "textDocument/formatting"
+            or request.method == "textDocument/rangeFormatting"
+        ):
             event = parse_obj_as(DocumentFormatting, response)
             event.message_id = response.id
 
@@ -347,7 +315,6 @@ class Client:
 
     # request from server
     def _handle_request(self, request: Request) -> Event:
-
         def parse_request(event_cls: t.Type[Event]) -> Event:
             if issubclass(event_cls, ServerRequest):
                 event = parse_obj_as(event_cls, request.params)
@@ -381,14 +348,14 @@ class Client:
 
         elif request.method == "window/workDoneProgress/create":
             ev = parse_request(WorkDoneProgressCreate)
-            self._progress_tokens_map[request.params['token']] = WorkDoneProgress
+            self._progress_tokens_map[request.params["token"]] = WorkDoneProgress
             return parse_request(WorkDoneProgressCreate)
 
         elif request.method == "$/progress":
-            progress_type = self._progress_tokens_map.get(request.params['token'])
+            progress_type = self._progress_tokens_map.get(request.params["token"])
 
             if progress_type == WorkDoneProgress:
-                kind = request.params['value']['kind']
+                kind = request.params["value"]["kind"]
                 kind = MWorkDoneProgressKind(kind)
 
                 if kind == MWorkDoneProgressKind.BEGIN:
@@ -407,7 +374,9 @@ class Client:
         else:
             raise NotImplementedError(request)
 
-    def recv(self, data: bytes, errors: t.Optional[t.List[t.Any]] = None) -> t.List[Event]:
+    def recv(
+        self, data: bytes, errors: t.Optional[t.List[t.Any]] = None
+    ) -> t.List[Event]:
         self._recv_buf += data
 
         # _parse_messages deletes consumed data from self._recv_buf
@@ -447,7 +416,6 @@ class Client:
         self._send_notification(
             method="$/cancelRequest", params={"id": self._id_counter - 1}
         )
-
 
     def did_open(self, text_document: TextDocumentItem) -> None:
         assert self._state == ClientState.NORMAL
@@ -504,9 +472,7 @@ class Client:
         )
 
     def did_change_workspace_folders(
-        self,
-        added: t.List[WorkspaceFolder],
-        removed: t.List[WorkspaceFolder],
+        self, added: t.List[WorkspaceFolder], removed: t.List[WorkspaceFolder]
     ) -> None:
         assert self._state == ClientState.NORMAL
         params = {
@@ -514,14 +480,13 @@ class Client:
             "removed": [f.dict() for f in removed],
         }
         self._send_notification(
-            method="workspace/didChangeWorkspaceFolders",
-            params=params,
+            method="workspace/didChangeWorkspaceFolders", params=params
         )
 
     def completion(
-            self,
-            text_document_position: TextDocumentPosition,
-            context: t.Optional[CompletionContext] = None,
+        self,
+        text_document_position: TextDocumentPosition,
+        context: t.Optional[CompletionContext] = None,
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}
@@ -530,78 +495,61 @@ class Client:
             params.update(context.dict())
         return self._send_request(method="textDocument/completion", params=params)
 
-    def hover(
-            self,
-            text_document_position: TextDocumentPosition,
-    ) -> int:
+    def hover(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/hover",
-            params=text_document_position.dict(),
+            method="textDocument/hover", params=text_document_position.dict()
         )
 
-    def signatureHelp(
-            self,
-            text_document_position: TextDocumentPosition,
-    ) -> int:
+    def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/signatureHelp",
-            params=text_document_position.dict(),
+            method="textDocument/signatureHelp", params=text_document_position.dict()
         )
 
     def definition(
-            self,
-            text_document_position: TextDocumentPosition,
-            #TODO PartialResultParams
+        self,
+        text_document_position: TextDocumentPosition,
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/definition",
-            params=text_document_position.dict(),
+            method="textDocument/definition", params=text_document_position.dict()
         )
 
     def declaration(
-            self,
-            text_document_position: TextDocumentPosition,
-            #TODO PartialResultParams
+        self,
+        text_document_position: TextDocumentPosition,
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/declaration",
-            params=text_document_position.dict(),
+            method="textDocument/declaration", params=text_document_position.dict()
         )
 
     def typeDefinition(
-            self,
-            text_document_position: TextDocumentPosition,
-            #TODO PartialResultParams
+        self,
+        text_document_position: TextDocumentPosition,
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/typeDefinition",
-            params=text_document_position.dict(),
+            method="textDocument/typeDefinition", params=text_document_position.dict()
         )
 
     def references(
-            self,
-            text_document_position: TextDocumentPosition,
-            #TODO PartialResultParams
+        self,
+        text_document_position: TextDocumentPosition,
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {
-            'context': {'includeDeclaration': True},
+            "context": {"includeDeclaration": True},
             **text_document_position.dict(),
         }
-        return self._send_request(
-            method="textDocument/references",
-            params=params,
-        )
+        return self._send_request(method="textDocument/references", params=params)
 
-    def call_hierarchy_in(
-            self,
-            text_document_position: TextDocumentPosition,
-    ) -> int:
+    def call_hierarchy_in(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/prepareCallHierarchy",
@@ -609,26 +557,22 @@ class Client:
         )
 
     def implementation(
-            self,
-            text_document_position: TextDocumentPosition,
-            #TODO PartialResultParams
+        self,
+        text_document_position: TextDocumentPosition,
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/implementation",
-            params=text_document_position.dict(),
+            method="textDocument/implementation", params=text_document_position.dict()
         )
 
     def workspace_symbol(
-            self,
-            query: str = '',
-            #TODO PartialResultParams
+        self,
+        query: str = "",
+        # TODO PartialResultParams
     ) -> int:
         assert self._state == ClientState.NORMAL
-        return self._send_request(
-            method="workspace/symbol",
-            params={'query': query},
-        )
+        return self._send_request(method="workspace/symbol", params={"query": query})
 
     def doc_symbol(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
@@ -638,25 +582,17 @@ class Client:
         )
 
     def formatting(
-            self,
-            text_document: TextDocumentIdentifier,
-            options: FormattingOptions,
+        self, text_document: TextDocumentIdentifier, options: FormattingOptions
     ) -> int:
         assert self._state == ClientState.NORMAL
-        params = {
-            "textDocument": text_document.dict(),
-            "options": options.dict(),
-        }
-        return self._send_request(
-            method="textDocument/formatting",
-            params=params,
-        )
+        params = {"textDocument": text_document.dict(), "options": options.dict()}
+        return self._send_request(method="textDocument/formatting", params=params)
 
     def range_formatting(
-            self,
-            text_document: TextDocumentIdentifier,
-            range: Range,
-            options: FormattingOptions,
+        self,
+        text_document: TextDocumentIdentifier,
+        range: Range,
+        options: FormattingOptions,
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {
@@ -664,7 +600,4 @@ class Client:
             "range": range.dict(),
             "options": options.dict(),
         }
-        return self._send_request(
-            method="textDocument/rangeFormatting",
-            params=params,
-        )
+        return self._send_request(method="textDocument/rangeFormatting", params=params)
