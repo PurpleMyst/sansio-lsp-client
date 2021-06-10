@@ -15,6 +15,11 @@ import pytest
 
 import sansio_lsp_client as lsp
 
+
+LOG_IN = False   # log data received from server to stdout
+LOG_OUT = False # - sent - to stdout
+
+
 METHOD_DID_OPEN         = 'didOpen'
 METHOD_DID_CLOSE        = 'didClose'
 METHOD_DID_SAVE         = 'didSave'
@@ -31,6 +36,8 @@ METHOD_TYPEDEF          = 'typeDefinition'
 METHOD_DOC_SYMBOLS      = 'documentSymbol'
 METHOD_FORMAT_DOC       = 'formatting'
 METHOD_FORMAT_SEL       = 'rangeFormatting'
+
+METHOD_WS_FOLDERS = 'workspace/workspaceFolders'
 
 RESPONSE_TYPES = {
     METHOD_COMPLETION     : lsp.Completion,
@@ -97,6 +104,13 @@ def get_meth_text_pos(text, method):
 
 
 class ThreadedServer:
+    """ Gathers all messages received from server - to handle random-order-messages \
+            that are not a response to a request.
+
+        * get_msg_by_type() - get server message by type. waits for the message
+        * stop()            - stop server via LSP
+    """
+
     def __init__(self, process, root_uri):
         self.process = process
         self.root_uri = root_uri
@@ -131,13 +145,13 @@ class ThreadedServer:
             while self._pout:
                 headers, header_bytes = parse_headers(self._pout)  # type: ignore
 
-                #print(f'\n <<< received: {headers}\n')
+                LOG_IN and print(f'\n <<< received: {headers}\n')
 
                 if header_bytes == b'':
                     break
 
                 body = self._pout.read(int(headers.get("Content-Length")))
-                #print(f'   < received: {body}\n')
+                LOG_IN and print(f'   < received: {body}\n')
                 self._read_q.put(header_bytes + body)
         except Exception as ex:
             self.exception = ex
@@ -152,7 +166,7 @@ class ThreadedServer:
                 if buf is None:
                     break
 
-                #print(f'\nsending: {buf}\n')
+                LOG_OUT and print(f'\nsending: {buf}\n')
 
                 self._pin.write(buf)
                 self._pin.flush()
@@ -160,7 +174,6 @@ class ThreadedServer:
             self.exception = ex
 
     def _queue_data_to_send(self):
-
         send_buf = self.lsp_client.send()
         if send_buf:
             self._send_q.put(send_buf)
@@ -189,9 +202,9 @@ class ThreadedServer:
             msg.reply([ lsp.WorkspaceFolder(uri=self.root_uri, name='Root'), ])
 
         else:
-            print(f'---cant autoreply: {type(msg)}')
+            print(f'Cant autoreply: {type(msg)}')
 
-    def process_qs(self):
+    def _process_qs(self):
         self._queue_data_to_send()
         self._read_data_received()
 
@@ -199,7 +212,7 @@ class ThreadedServer:
     def get_msg_by_type(self, _type, timeout=5):
         end_time = time.time() + timeout
         while time.time() < end_time:
-            self.process_qs()
+            self._process_qs()
 
             # raise thread's exception if have any
             if self.exception:
@@ -211,7 +224,6 @@ class ThreadedServer:
                     return msg
 
             time.sleep(0.05)
-            #time.sleep(0.3)
         #end while
 
         raise Exception(f'Didn`t receive "{_type}" in time; have: {[type(m).__name__ for m in self.msgs]}')
@@ -220,80 +232,76 @@ class ThreadedServer:
         self.lsp_client.shutdown() # send shutdown...
         self.get_msg_by_type(lsp.Shutdown) # receive shutdown...
         self.lsp_client.exit() # send exit...
-        self.process_qs() # give data to send-thread
-
-
-def start_server(command, project_root):
-    print(f'~~~start server process: {command}')
-    with subprocess.Popen(
-        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
-    ) as process:
-
-        print(f'~~~0')
-        tserver = ThreadedServer(process, project_root.as_uri())
-        print(f'~~~1')
-
-        try:
-            yield (tserver, project_root)
-            print(f'~~~2')
-
-            if tserver.msgs:
-                print('* unprocessed messages:', ', '.join(type(m).__name__ for m in tserver.msgs))
-            print(f'~~~3')
-        finally:
-            tserver.stop()
-            print(f'~~~4')
-
-
-@pytest.fixture(scope='session')
-def server_pyls(tmp_path_factory):
-    project_root = tmp_path_factory.mktemp('tmp_pyls')
-    command = [sys.executable, "-m", "pyls"]
-
-    yield from start_server(command, project_root)
+        self._process_qs() # give data to send-thread
 
 
 test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
 
 
+SERVER_PYLS = 'pyls'
+SERVER_JS = 'js'
+SERVER_CLANGD_10 = 'clangd_10'
+SERVER_CLANGD_11 = 'clangd_11'
+SERVER_GOPLS = 'gopls'
+
+SERVER_COMMANDS = {
+    SERVER_PYLS       : [sys.executable, "-m", "pyls"],
+    SERVER_JS         : [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+    SERVER_CLANGD_10  : [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
+    SERVER_CLANGD_11  : [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
+    SERVER_GOPLS      : ['gopls'],
+}
+
+
+def start_server(server_name, tmp_path_factory):
+    command = SERVER_COMMANDS[server_name]
+    project_root = tmp_path_factory.mktemp('tmp_'+server_name)
+
+    if server_name == SERVER_GOPLS:
+        # create file(s) before starting server, jic
+        for fn,text in files_go.items():
+            path = project_root / fn
+            path.write_text(text)
+
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    ) as process:
+        tserver = ThreadedServer(process, project_root.as_uri())
+
+        try:
+            yield (tserver, project_root)
+
+            if tserver.msgs:
+                print('* unprocessed messages:', ', '.join(type(m).__name__ for m in tserver.msgs))
+        finally:
+            tserver.stop()
+
+
+@pytest.fixture(scope='session')
+def server_pyls(tmp_path_factory):
+    yield from start_server(SERVER_PYLS, tmp_path_factory)
+
+
 @pytest.fixture(scope='session')
 def server_js(tmp_path_factory):
-    project_root = tmp_path_factory.mktemp('tmp_js')
-    command = [test_langservers / "node_modules/.bin/javascript-typescript-stdio"]
-
-    yield from start_server(command, project_root)
+    yield from start_server(SERVER_JS, tmp_path_factory)
 
 
 @pytest.fixture(scope='session')
 def server_clangd_10(tmp_path_factory):
-    project_root = tmp_path_factory.mktemp('tmp_clangd_10')
-    command = [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"]
-
-    yield from start_server(command, project_root)
+    yield from start_server(SERVER_CLANGD_10, tmp_path_factory)
 
 
 @pytest.fixture(scope='session')
 def server_clangd_11(tmp_path_factory):
-    project_root = tmp_path_factory.mktemp('tmp_clangd_11')
-    command = [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"]
-
-    yield from start_server(command, project_root)
+    yield from start_server(SERVER_CLANGD_11, tmp_path_factory)
 
 
 @pytest.fixture(scope='session')
 def server_gopls(tmp_path_factory):
-    project_root = tmp_path_factory.mktemp('tmp_gopls')
-    command = ['gopls']
-
-    # create file(s) before starting server, jic
-    for fn,text in files_go.items():
-        path = project_root / fn
-        path.write_text(text)
-
-    yield from start_server(command, project_root)
+    yield from start_server(SERVER_GOPLS, tmp_path_factory)
 
 
-#def do_server_method(lsp_client, event_iter, method, text, file_uri):
 def do_server_method(tserver, method, text, file_uri, response_type=None):
     def doc_pos(): #SKIP
         x,y = get_meth_text_pos(text=text, method=method)
@@ -325,17 +333,29 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
     elif method == METHOD_REFERENCES:
         event_id = tserver.lsp_client.references(text_document_position=doc_pos())
 
+    elif method == METHOD_IMPLEMENTATION:
+        event_id = tserver.lsp_client.implementation(text_document_position=doc_pos())
+
+    elif method == METHOD_DECLARATION:
+        event_id = tserver.lsp_client.declaration(text_document_position=doc_pos())
+
+    elif method == METHOD_TYPEDEF:
+        event_id = tserver.lsp_client.typeDefinition(text_document_position=doc_pos())
+
+    elif method == METHOD_DOC_SYMBOLS:
+        _docid = lsp.TextDocumentIdentifier(uri=file_uri)
+        event_id = tserver.lsp_client.doc_symbol(text_document=_docid)
+
     else:
         raise NotImplementedError(method)
 
-    # "blocking"
+    # "blocking" -- will wait for message
     resp = tserver.get_msg_by_type(response_type)
     assert not hasattr(resp, 'message_id') or resp.message_id == event_id
     return resp
 
 
-def _test_pyls(server_pyls):
-    #lsp_client, project_root, event_iter = server_pyls
+def test_pyls(server_pyls):
     tserver, project_root = server_pyls
 
     text = textwrap.dedent(
@@ -419,18 +439,24 @@ def _test_pyls(server_pyls):
     ref_line = next(i for i,line in enumerate(text.splitlines()) if METHOD_REFERENCES in line)
     assert item.range.start.line == ref_line
 
-    #print(pprint.pformat(refs, width=130))
-
-    # implementation #####
-    # declaration #####
-    # typeDefinition #####
-
     # documentSymbol #####
-    # formatting #####
-    # rangeFormatting #####
-    # workspace/symbol #####
+    doc_symbols = do_server_method(**do_meth_params, method=METHOD_DOC_SYMBOLS)
+    assert len(doc_symbols.result) == 3
+    symb_names = {s.name for s in doc_symbols.result}
+    assert symb_names == {'sys', 'do_foo', 'do_bar'}
 
-    # prepareCallHierarchy #####
+    # formatting #####
+    tserver.lsp_client.formatting(
+        text_document=lsp.TextDocumentIdentifier(uri=path.as_uri()),
+        options=lsp.FormattingOptions(tabSize=4, insertSpaces=True),
+    )
+    formatting = tserver.get_msg_by_type(RESPONSE_TYPES[METHOD_FORMAT_DOC])
+    assert formatting.result
+
+    # Error -- method not supported by server #####
+    tserver.lsp_client.workspace_symbol()
+    err = tserver.get_msg_by_type(lsp.ResponseError)
+    assert err.message == 'Method Not Found: workspace/symbol'
 
 
 @pytest.mark.skipif(
@@ -503,7 +529,8 @@ c_args = (
     textwrap.dedent(
         f"""\
         #include <stdio.h>
-        void do_foo(void) {{
+        void do_foo(void);
+        void do_foo(void) {{//#{METHOD_DECLARATION}-13
         }}
         int do_bar(char x, long y) {{
             short z = x + y;
@@ -594,6 +621,17 @@ def test_clangd_11(server_clangd_11):
     assert " do_foo()" in completions
     assert " do_bar(char x, long y)" in completions
 
+    # workspace/symbol #####
+    #TODO - empty for some reason
+    #tserver.lsp_client.workspace_symbol()
+    #w_symb = tserver.get_msg_by_type(lsp.MWorkspaceSymbols)
+
+    # declaration #####
+    declaration = do_server_method(**do_meth_params, method=METHOD_DECLARATION)
+    assert len(declaration.result) == 1
+    assert declaration.result[0].uri == path.as_uri()
+
+
 
 files_go = {
     'foo.go': textwrap.dedent(
@@ -602,12 +640,21 @@ files_go = {
 
         import "fmt"
 
-        func doSomethingWithFoo(x, y) string {{
-            blah := x + y
-            return asdf asdf
+        type Creature struct {{
+            Name string
+        }}
+        func (c*Creature) Dump() {{
+            fmt.Printf("Name: '%s'", c.Name)
         }}
 
-        var s = doS //#{METHOD_COMPLETION}-3"""
+        func doSomethingWithFoo(x, y) string {{
+            blah := x + y
+        	cat := &Creature{{"cat"}} //#{METHOD_TYPEDEF}-18
+        	cat := &Creature{{"cat"}} //#{METHOD_IMPLEMENTATION}-14
+        	cat.Dump() //#{METHOD_IMPLEMENTATION}-7
+            return asdf asdf
+        }}
+        var s1 = doS //#{METHOD_COMPLETION}-3"""
     ),
     'go.mod': textwrap.dedent(
         """\
@@ -618,9 +665,7 @@ files_go = {
     )
 }
 
-'!!! rork'
 def test_gopls(server_gopls):
-    print(f'~~~1.a')
     #lsp_client, project_root, event_iter = server_gopls
     tserver, project_root = server_gopls
 
@@ -631,10 +676,8 @@ def test_gopls(server_gopls):
     path = project_root / filename
     text = files_go[filename]
 
-    print(f'~~~1.b')
     # Init #####
     inited = tserver.get_msg_by_type(lsp.Initialized)
-    print(f'~~~1.c')
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -660,5 +703,12 @@ def test_gopls(server_gopls):
         item.label for item in completions.completion_list.items
     ]
 
-    print(f'~~~1.z')
+    # implementation #####
+    #TODO - null result for some reason
+    #implementation = do_server_method(**do_meth_params, method=METHOD_IMPLEMENTATION)
+    #print(f' implementation: {implementation}')
 
+    # typeDefinition #####
+    typedef = do_server_method(**do_meth_params, method=METHOD_TYPEDEF)
+    assert len(typedef.result) == 1
+    assert typedef.result[0].uri == path.as_uri()
