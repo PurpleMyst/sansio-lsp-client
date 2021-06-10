@@ -245,16 +245,17 @@ SERVER_CLANGD_11 = 'clangd_11'
 SERVER_GOPLS = 'gopls'
 
 SERVER_COMMANDS = {
-    SERVER_PYLS       : [sys.executable, "-m", "pyls"],
-    SERVER_JS         : [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
-    SERVER_CLANGD_10  : [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
-    SERVER_CLANGD_11  : [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
-    SERVER_GOPLS      : ['gopls'],
+    SERVER_PYLS       : lambda: [sys.executable, "-m", "pyls"],
+    SERVER_JS         : lambda: [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+    SERVER_CLANGD_10  : lambda: [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
+    SERVER_CLANGD_11  : lambda: [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
+    SERVER_GOPLS      : lambda: ['gopls'],
 }
 
 
 def start_server(server_name, tmp_path_factory):
     command = SERVER_COMMANDS[server_name]
+    command = command()
     project_root = tmp_path_factory.mktemp('tmp_'+server_name)
 
     if server_name == SERVER_GOPLS:
