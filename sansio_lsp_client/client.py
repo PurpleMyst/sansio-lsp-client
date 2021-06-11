@@ -80,7 +80,6 @@ class ClientState(enum.Enum):
     EXITED = enum.auto()
 
 
-# NOTE: Server capabilitie: resolveProvider - info about completion item -- can't use?
 CAPABILITIES = {
     "textDocument": {
         "synchronization": {
