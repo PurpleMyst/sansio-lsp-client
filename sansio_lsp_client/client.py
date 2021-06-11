@@ -548,6 +548,7 @@ class Client:
         }
         return self._send_request(method="textDocument/references", params=params)
 
+    #TODO incomplete
     def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(

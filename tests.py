@@ -246,7 +246,7 @@ class ThreadedServer:
             self.process.kill()
 
 
-test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
+test_langservers = pathlib.Path(__file__).absolute().parent / "test_langservers"
 
 
 SERVER_PYLS = "pyls"
