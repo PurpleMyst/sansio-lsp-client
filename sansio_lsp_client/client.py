@@ -392,7 +392,7 @@ class Client:
                     events.append(self._handle_request(message))
                 else:
                     raise RuntimeError("nobody will ever see this, i hope")
-            except:
+            except Exception:
                 logger.exception("Failed to process received message: %s", message)
 
         return events
