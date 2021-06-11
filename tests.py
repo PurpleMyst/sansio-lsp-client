@@ -149,13 +149,16 @@ class ThreadedServer:
             while self._pout:
                 headers, header_bytes = parse_headers(self._pout)  # type: ignore
 
-                LOG_IN and print(f"\n <<< received: {headers}\n")
+                if LOG_IN:
+                    print(f"\n <<< received: {headers}\n")
 
                 if header_bytes == b"":
                     break
 
                 body = self._pout.read(int(headers.get("Content-Length")))
-                LOG_IN and print(f"   < received: {body}\n")
+                if LOG_IN:
+                    print(f"   < received: {body}\n")
+
                 self._read_q.put(header_bytes + body)
         except Exception as ex:
             self.exception = ex
@@ -170,7 +173,8 @@ class ThreadedServer:
                 if buf is None:
                     break
 
-                LOG_OUT and print(f"\nsending: {buf}\n")
+                if LOG_OUT:
+                    print(f"\nsending: {buf}\n")
 
                 self._pin.write(buf)
                 self._pin.flush()
