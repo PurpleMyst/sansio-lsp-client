@@ -185,8 +185,7 @@ class ThreadedServer:
     def _read_data_received(self):
         while not self._read_q.empty():
             data = self._read_q.get()
-            errors = []
-            events = self.lsp_client.recv(data, errors=errors)
+            events = self.lsp_client.recv(data)
             for ev in events:
                 self.msgs.append(ev)
                 self._try_default_reply(ev)
@@ -234,10 +233,13 @@ class ThreadedServer:
         )
 
     def stop(self):
-        self.lsp_client.shutdown()  # send shutdown...
-        self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
-        self.lsp_client.exit()  # send exit...
-        self._process_qs()  # give data to send-thread
+        if self.lsp_client.is_initialized:
+            self.lsp_client.shutdown()  # send shutdown...
+            self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
+            self.lsp_client.exit()  # send exit...
+            self._process_qs()  # give data to send-thread
+        else:
+            self.process.kill()
 
 
 test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
@@ -280,16 +282,15 @@ def start_server(server_name, tmp_path_factory):
     ) as process:
         tserver = ThreadedServer(process, project_root.as_uri())
 
-        try:
-            yield (tserver, project_root)
+        yield (tserver, project_root)
 
-            if tserver.msgs:
-                print(
-                    "* unprocessed messages:",
-                    ", ".join(type(m).__name__ for m in tserver.msgs),
-                )
-        finally:
-            tserver.stop()
+        if tserver.msgs:
+            print(
+                "* unprocessed messages:",
+                ", ".join(type(m).__name__ for m in tserver.msgs),
+            )
+
+        tserver.stop()
 
 
 @pytest.fixture(scope="session")
