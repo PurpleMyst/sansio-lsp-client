@@ -359,7 +359,7 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
 
     elif method == METHOD_DOC_SYMBOLS:
         _docid = lsp.TextDocumentIdentifier(uri=file_uri)
-        event_id = tserver.lsp_client.doc_symbol(text_document=_docid)
+        event_id = tserver.lsp_client.documentSymbol(text_document=_docid)
 
     else:
         raise NotImplementedError(method)

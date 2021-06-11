@@ -548,7 +548,7 @@ class Client:
         }
         return self._send_request(method="textDocument/references", params=params)
 
-    def call_hierarchy_in(self, text_document_position: TextDocumentPosition) -> int:
+    def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/prepareCallHierarchy",
@@ -573,7 +573,7 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(method="workspace/symbol", params={"query": query})
 
-    def doc_symbol(self, text_document: TextDocumentIdentifier) -> int:
+    def documentSymbol(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/documentSymbol",
@@ -587,7 +587,7 @@ class Client:
         params = {"textDocument": text_document.dict(), "options": options.dict()}
         return self._send_request(method="textDocument/formatting", params=params)
 
-    def range_formatting(
+    def rangeFormatting(
         self,
         text_document: TextDocumentIdentifier,
         range: Range,
