@@ -8,8 +8,6 @@ import re
 import threading
 import queue
 import time
-import email
-from http import client
 
 import pytest
 
@@ -52,36 +50,6 @@ RESPONSE_TYPES = {
     METHOD_FORMAT_DOC: lsp.DocumentFormatting,
     METHOD_FORMAT_SEL: lsp.DocumentFormatting,
 }
-
-
-_MAXLINE = 65536
-_MAXHEADERS = 100
-
-# from https://github.com/python/cpython/blob/3.9/Lib/http/client.py
-#  modified to keep header_bytes
-def parse_headers(fp, _class=client.HTTPMessage):
-    """Parses only RFC2822 headers from a file pointer.
-    email Parser wants to see strings rather than bytes.
-    But a TextIOWrapper around self.rfile would buffer too many bytes
-    from the stream, bytes which we later need to read as bytes.
-    So we read the correct bytes here, as bytes, for email Parser
-    to parse.
-    """
-    headers = []
-
-    while True:
-        line = fp.readline(_MAXLINE + 1)
-
-        if len(line) > _MAXLINE:
-            raise Exception("LineTooLong: header line")
-        headers.append(line)
-        if len(headers) > _MAXHEADERS:
-            raise Exception("HTTPException: got more than %d headers" % _MAXHEADERS)
-        if line in (b"\r\n", b"\n", b""):
-            break
-    header_bytes = b"".join(headers)
-    hstring = header_bytes.decode("iso-8859-1")
-    return email.parser.Parser(_class=_class).parsestr(hstring), header_bytes
 
 
 def get_meth_text_pos(text, method):
@@ -147,19 +115,12 @@ class ThreadedServer:
     def _read_loop(self):
         try:
             while self._pout:
-                headers, header_bytes = parse_headers(self._pout)  # type: ignore
+                data = self._pout.read(1)
 
-                if LOG_IN:
-                    print(f"\n <<< received: {headers}\n")
-
-                if header_bytes == b"":
+                if data == b"":
                     break
 
-                body = self._pout.read(int(headers.get("Content-Length")))
-                if LOG_IN:
-                    print(f"   < received: {body}\n")
-
-                self._read_q.put(header_bytes + body)
+                self._read_q.put(data)
         except Exception as ex:
             self.exception = ex
         self._send_q.put_nowait(None)  # stop send_loop()
@@ -229,7 +190,7 @@ class ThreadedServer:
                     self.msgs.remove(msg)
                     return msg
 
-            time.sleep(0.05)
+            time.sleep(0.2)
         # end while
 
         raise Exception(
