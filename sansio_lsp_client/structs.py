@@ -61,11 +61,7 @@ class Position(BaseModel):
 
     # for sorting
     def __lt__(self, other: "Position") -> bool:
-        return (
-            (self.character < other.character)
-            if self.line == other.line
-            else (self.line < other.line)
-        )
+        return (self.line, self.character) < (other.line, other.character)
 
 
 class Range(BaseModel):
