@@ -80,7 +80,6 @@ class ClientState(enum.Enum):
     EXITED = enum.auto()
 
 
-# NOTE: Server capabilitie: resolveProvider - info about completion item -- can't use?
 CAPABILITIES = {
     "textDocument": {
         "synchronization": {
@@ -377,9 +376,7 @@ class Client:
         else:
             raise NotImplementedError(request)
 
-    def recv(
-        self, data: bytes, errors: t.Optional[t.List[t.Any]] = None
-    ) -> t.List[Event]:
+    def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
 
         # _parse_messages deletes consumed data from self._recv_buf
@@ -394,7 +391,7 @@ class Client:
                     events.append(self._handle_request(message))
                 else:
                     raise RuntimeError("nobody will ever see this, i hope")
-            except:
+            except Exception:
                 logger.exception("Failed to process received message: %s", message)
 
         return events
@@ -551,7 +548,8 @@ class Client:
         }
         return self._send_request(method="textDocument/references", params=params)
 
-    def call_hierarchy_in(self, text_document_position: TextDocumentPosition) -> int:
+    # TODO incomplete
+    def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/prepareCallHierarchy",
@@ -576,7 +574,7 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(method="workspace/symbol", params={"query": query})
 
-    def doc_symbol(self, text_document: TextDocumentIdentifier) -> int:
+    def documentSymbol(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/documentSymbol",
@@ -590,7 +588,7 @@ class Client:
         params = {"textDocument": text_document.dict(), "options": options.dict()}
         return self._send_request(method="textDocument/formatting", params=params)
 
-    def range_formatting(
+    def rangeFormatting(
         self,
         text_document: TextDocumentIdentifier,
         range: Range,

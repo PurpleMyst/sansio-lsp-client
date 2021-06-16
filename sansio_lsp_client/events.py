@@ -134,12 +134,6 @@ class PublishDiagnostics(ServerNotification):
     diagnostics: t.List[Diagnostic]
 
 
-""" Hover:
-    * contents: MarkedString | MarkedString[] | MarkupContent;
-    * range?: Range;
-"""
-
-
 class Hover(Event):
     message_id: t.Optional[Id]  # custom...
     contents: t.Union[

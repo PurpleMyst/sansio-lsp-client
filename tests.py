@@ -149,13 +149,16 @@ class ThreadedServer:
             while self._pout:
                 headers, header_bytes = parse_headers(self._pout)  # type: ignore
 
-                LOG_IN and print(f"\n <<< received: {headers}\n")
+                if LOG_IN:
+                    print(f"\n <<< received: {headers}\n")
 
                 if header_bytes == b"":
                     break
 
                 body = self._pout.read(int(headers.get("Content-Length")))
-                LOG_IN and print(f"   < received: {body}\n")
+                if LOG_IN:
+                    print(f"   < received: {body}\n")
+
                 self._read_q.put(header_bytes + body)
         except Exception as ex:
             self.exception = ex
@@ -170,7 +173,8 @@ class ThreadedServer:
                 if buf is None:
                     break
 
-                LOG_OUT and print(f"\nsending: {buf}\n")
+                if LOG_OUT:
+                    print(f"\nsending: {buf}\n")
 
                 self._pin.write(buf)
                 self._pin.flush()
@@ -185,8 +189,7 @@ class ThreadedServer:
     def _read_data_received(self):
         while not self._read_q.empty():
             data = self._read_q.get()
-            errors = []
-            events = self.lsp_client.recv(data, errors=errors)
+            events = self.lsp_client.recv(data)
             for ev in events:
                 self.msgs.append(ev)
                 self._try_default_reply(ev)
@@ -234,13 +237,16 @@ class ThreadedServer:
         )
 
     def stop(self):
-        self.lsp_client.shutdown()  # send shutdown...
-        self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
-        self.lsp_client.exit()  # send exit...
-        self._process_qs()  # give data to send-thread
+        if self.lsp_client.is_initialized:
+            self.lsp_client.shutdown()  # send shutdown...
+            self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
+            self.lsp_client.exit()  # send exit...
+            self._process_qs()  # give data to send-thread
+        else:
+            self.process.kill()
 
 
-test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
+test_langservers = pathlib.Path(__file__).absolute().parent / "test_langservers"
 
 
 SERVER_PYLS = "pyls"
@@ -280,16 +286,15 @@ def start_server(server_name, tmp_path_factory):
     ) as process:
         tserver = ThreadedServer(process, project_root.as_uri())
 
-        try:
-            yield (tserver, project_root)
+        yield (tserver, project_root)
 
-            if tserver.msgs:
-                print(
-                    "* unprocessed messages:",
-                    ", ".join(type(m).__name__ for m in tserver.msgs),
-                )
-        finally:
-            tserver.stop()
+        if tserver.msgs:
+            print(
+                "* unprocessed messages:",
+                ", ".join(type(m).__name__ for m in tserver.msgs),
+            )
+
+        tserver.stop()
 
 
 @pytest.fixture(scope="session")
@@ -358,7 +363,7 @@ def do_server_method(tserver, method, text, file_uri, response_type=None):
 
     elif method == METHOD_DOC_SYMBOLS:
         _docid = lsp.TextDocumentIdentifier(uri=file_uri)
-        event_id = tserver.lsp_client.doc_symbol(text_document=_docid)
+        event_id = tserver.lsp_client.documentSymbol(text_document=_docid)
 
     else:
         raise NotImplementedError(method)
