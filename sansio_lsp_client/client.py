@@ -54,10 +54,7 @@ from .structs import (
     TextDocumentSaveReason,
     TextEdit,
     Id,
-    Location,
-    LocationLink,
     SymbolKind,
-    SymbolInformation,
     FormattingOptions,
     Range,
     WorkspaceFolder,
@@ -168,17 +165,17 @@ class Client:
         # Store type of '$/progress' for parsing
         self._progress_tokens_map: t.Dict[ProgressToken, t.Type[Progress]] = {}
 
-        # prepare workspace folders for sending -- to `dict`
-        if workspace_folders:
-            workspace_folders = [f.dict() for f in workspace_folders]  # type: ignore
-
         # We'll just immediately send off an "initialize" request.
         self._send_request(
             method="initialize",
             params={
                 "processId": process_id,
                 "rootUri": root_uri,
-                "workspaceFolders": workspace_folders,
+                "workspaceFolders": (
+                    None
+                    if workspace_folders is None
+                    else [f.dict() for f in workspace_folders]
+                ),
                 "trace": trace,
                 "capabilities": CAPABILITIES,
             },
@@ -348,9 +345,9 @@ class Client:
 
         elif request.method == "window/workDoneProgress/create":
             assert request.params is not None
-            ev = parse_request(WorkDoneProgressCreate)
+            event = parse_request(WorkDoneProgressCreate)
             self._progress_tokens_map[request.params["token"]] = WorkDoneProgress
-            return parse_request(WorkDoneProgressCreate)
+            return event
 
         elif request.method == "$/progress":
             assert request.params is not None

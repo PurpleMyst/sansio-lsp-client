@@ -96,6 +96,7 @@ class TextDocumentContentChangeEvent(BaseModel):
         d = super().dict(**kwargs)
 
         # vscode-css server requires un-filled values to be absent
+        # TODO: add vscode-css to tests
         if self.rangeLength is None:
             del d["rangeLength"]
         if self.range is None:

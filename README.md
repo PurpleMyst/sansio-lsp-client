@@ -14,18 +14,18 @@ easily in your editor.
     (env)$ pip install poetry
     (env)$ poetry install
 
-To run tests, you currently need a non-Windows system.
-First download the langservers you need.
-You can mostly read `.github/workflows/test.yml`, but there are some gotchas:
+If you are on Windows, you can't run tests,
+but GitHub Actions runs tests of all pull requests and uploads coverage files from them.
+TODO: add instructions for looking at coverage files on Windows
 
-- If you want to install the Go langserver, you will need to install go from https://golang.org/.
-    The one from `sudo apt install golang` is too old.
-    Extract it to `go/` inside `sansio-lsp-client`:
+To run tests, first download the langservers you need.
+You can mostly read `.github/workflows/test.yml`, but the Go langserver is a bit of a gotcha.
+You will need to install go from https://golang.org/,
+because the one from `sudo apt install golang` is too old.
+Extract it inside `sansio-lsp-client` so that you get a folder named `sansio-lsp-client/go`.
 
-        $ tar xf /blah/blah/Downloads/go1.16.5.linux-amd64.tar.gz
+    $ tar xf /blah/blah/Downloads/go1.16.5.linux-amd64.tar.gz
 
 Then run the tests:
 
     $ PATH="$PATH:$(pwd)/go/bin" poetry run pytest tests.py
-
-If you are on Windows, you can make a pull request and let GitHub Actions run tests.
