@@ -99,7 +99,7 @@ class ThreadedServer:
     # threaded
     def _read_loop(self):
         try:
-            while self._pout:
+            while True:
                 data = self._pout.read(1)
 
                 if data == b"":
