@@ -145,6 +145,7 @@ class Client:
         trace: str = "off",
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
+        self._recv_catches_and_logs_errors = True  # for tests
 
         # Used to save data as it comes in (from `recieve_bytes`) until we have
         # a full request.
@@ -388,8 +389,11 @@ class Client:
                     events.append(self._handle_request(message))
                 else:
                     raise RuntimeError("nobody will ever see this, i hope")
-            except Exception:
-                logger.exception("Failed to process received message: %s", message)
+            except Exception as e:
+                if self._recv_catches_and_logs_errors:
+                    logger.exception("Failed to process received message: %s", message)
+                else:
+                    raise e
 
         return events
 

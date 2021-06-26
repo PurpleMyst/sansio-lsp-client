@@ -424,7 +424,7 @@ class MWorkDoneProgressKind(enum.Enum):
 
 
 class WorkDoneProgressBeginValue(WorkDoneProgressValue):
-    kind: Literal[MWorkDoneProgressKind.BEGIN]
+    kind: Literal["begin"]
     title: str
     cancellable: t.Optional[bool]
     message: t.Optional[str]
@@ -432,14 +432,14 @@ class WorkDoneProgressBeginValue(WorkDoneProgressValue):
 
 
 class WorkDoneProgressReportValue(WorkDoneProgressValue):
-    kind: Literal[MWorkDoneProgressKind.REPORT]
+    kind: Literal["report"]
     cancellable: t.Optional[bool]
     message: t.Optional[str]
     percentage: t.Optional[int]
 
 
 class WorkDoneProgressEndValue(WorkDoneProgressValue):
-    kind: Literal[MWorkDoneProgressKind.END]
+    kind: Literal["end"]
     message: t.Optional[str]
 
 
