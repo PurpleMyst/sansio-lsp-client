@@ -2,7 +2,6 @@ import contextlib
 import functools
 import pprint
 import pathlib
-import platform
 import shutil
 import subprocess
 import sys
@@ -201,31 +200,20 @@ class ThreadedServer:
 test_langservers = pathlib.Path(__file__).absolute().parent / "test_langservers"
 
 
-SERVER_PYLS = "pyls"
-SERVER_JS = "js"
-SERVER_CLANGD_10 = "clangd_10"
-SERVER_CLANGD_11 = "clangd_11"
-SERVER_GOPLS = "gopls"
-
+_clangd_10 = next(test_langservers.glob("clangd_10.*/bin/clangd"), None)
+_clangd_11 = next(test_langservers.glob("clangd_11.*/bin/clangd"), None)
 SERVER_COMMANDS = {
-    SERVER_PYLS: lambda: [sys.executable, "-m", "pyls"],
-    SERVER_JS: lambda: [
-        test_langservers / "node_modules/.bin/javascript-typescript-stdio"
-    ],
-    SERVER_CLANGD_10: lambda: [
-        next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"
-    ],
-    SERVER_CLANGD_11: lambda: [
-        next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"
-    ],
-    SERVER_GOPLS: lambda: [test_langservers / "bin" / "gopls"],
+    "pyls": [sys.executable, "-m", "pyls"],
+    "js": [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+    "clangd_10": [_clangd_10],
+    "clangd_11": [_clangd_11],
+    "gopls": [test_langservers / "bin" / "gopls"],
 }
 
 
 @contextlib.contextmanager
 def start_server(langserver_name, tmp_path_factory):
     command = SERVER_COMMANDS[langserver_name]
-    command = command()
     project_root = tmp_path_factory.mktemp("tmp_" + langserver_name)
 
     if langserver_name == SERVER_GOPLS:
@@ -547,11 +535,6 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
             assert typedef.result[0].uri == path.as_uri()
 
 
-_skip_windows_clangd = pytest.mark.skipif(
-    platform.system() == "Windows", reason="don't know how clangd works on windows"
-)
-
-
 def _needs_clangd(version):
     return pytest.mark.skipif(
         not list(test_langservers.glob(f"clangd_{version}.*")),
@@ -572,14 +555,18 @@ def test_javascript_typescript_langserver(tmp_path_factory):
     check_that_langserver_works("js", tmp_path_factory)
 
 
-@_skip_windows_clangd
-@_needs_clangd(10)
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="don't know how clangd works on windows"
+)
+@pytest.mark.skipif(_clangd_10 is None, reason="clangd 10 not found")
 def test_clangd_10(tmp_path_factory):
     check_that_langserver_works("clangd_10", tmp_path_factory)
 
 
-@_skip_windows_clangd
-@_needs_clangd(11)
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="don't know how clangd works on windows"
+)
+@pytest.mark.skipif(_clangd_11 is None, reason="clangd 11 not found")
 def test_clangd_11(tmp_path_factory):
     check_that_langserver_works("clangd_11", tmp_path_factory)
 
