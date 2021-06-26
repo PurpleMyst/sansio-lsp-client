@@ -17,11 +17,6 @@ import pytest
 import sansio_lsp_client as lsp
 
 
-METHOD_DID_OPEN = "didOpen"
-METHOD_DID_CLOSE = "didClose"
-METHOD_DID_SAVE = "didSave"
-METHOD_DID_CHANGE = "didChange"
-
 METHOD_COMPLETION = "completion"
 METHOD_HOVER = "hover"
 METHOD_SIG_HELP = "signatureHelp"
@@ -33,8 +28,6 @@ METHOD_TYPEDEF = "typeDefinition"
 METHOD_DOC_SYMBOLS = "documentSymbol"
 METHOD_FORMAT_DOC = "formatting"
 METHOD_FORMAT_SEL = "rangeFormatting"
-
-METHOD_WS_FOLDERS = "workspace/workspaceFolders"
 
 RESPONSE_TYPES = {
     METHOD_COMPLETION: lsp.Completion,
