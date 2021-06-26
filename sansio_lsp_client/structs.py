@@ -54,7 +54,7 @@ class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
     version: t.Optional[int]
 
 
-# Sorting tip:  sorted(positions, key=(lambda p: (p.line, p.character)))
+# Sorting tip:  sorted(positions, key=(lambda p: p.as_tuple()))
 class Position(BaseModel):
     # NB: These are both zero-based.
     line: int
