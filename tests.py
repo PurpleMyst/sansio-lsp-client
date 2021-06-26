@@ -63,11 +63,9 @@ def get_meth_text_pos(text, method):
 
 
 class ThreadedServer:
-    """ Gathers all messages received from server - to handle random-order-messages \
-            that are not a response to a request.
-
-        * get_msg_by_type() - get server message by type. waits for the message
-        * stop()            - stop server via LSP
+    """
+    Gathers all messages received from server - to handle random-order-messages
+    that are not a response to a request.
     """
 
     def __init__(self, process, root_uri):
@@ -98,10 +96,6 @@ class ThreadedServer:
 
         self.exception = None
 
-    @property
-    def all_msgs(self):
-        return self.msgs[:]
-
     # threaded
     def _read_loop(self):
         try:
@@ -114,7 +108,7 @@ class ThreadedServer:
                 self._read_q.put(data)
         except Exception as ex:
             self.exception = ex
-        self._send_q.put_nowait(None)  # stop send_loop()
+        self._send_q.put_nowait(None)  # stop send loop
 
     # threaded
     def _send_loop(self):
@@ -146,55 +140,99 @@ class ThreadedServer:
                 self._try_default_reply(ev)
 
     def _try_default_reply(self, msg):
-        empty_reply_classes = (
-            lsp.ShowMessageRequest,
-            lsp.WorkDoneProgressCreate,
-            lsp.RegisterCapabilityRequest,
-            lsp.ConfigurationRequest,
-        )
-
-        if isinstance(msg, empty_reply_classes):
+        if isinstance(
+            msg,
+            (
+                lsp.ShowMessageRequest,
+                lsp.WorkDoneProgressCreate,
+                lsp.RegisterCapabilityRequest,
+                lsp.ConfigurationRequest,
+            ),
+        ):
             msg.reply()
 
         elif isinstance(msg, lsp.WorkspaceFolders):
             msg.reply([lsp.WorkspaceFolder(uri=self.root_uri, name="Root")])
 
-        else:
-            print(f"Can't autoreply: {type(msg)}")
+    #        else:
+    #            print(f"Can't autoreply: {type(msg)}")
 
-    def _process_qs(self):
-        self._queue_data_to_send()
-        self._read_data_received()
-
-    def get_msg_by_type(self, _type, timeout=5):
+    def wait_for_message_of_type(self, type_, timeout=5):
         end_time = time.time() + timeout
         while time.time() < end_time:
-            self._process_qs()
+            self._queue_data_to_send()
+            self._read_data_received()
 
             # raise thread's exception if have any
             if self.exception:
                 raise self.exception
 
             for msg in self.msgs:
-                if isinstance(msg, _type):
+                if isinstance(msg, type_):
                     self.msgs.remove(msg)
                     return msg
 
             time.sleep(0.2)
-        # end while
 
         raise Exception(
-            f"Didn`t receive {_type} in time; have: " + pprint.pprint(self.msgs)
+            f"Didn't receive {type_} in time; have: " + pprint.pprint(self.msgs)
         )
 
-    def stop(self):
-        if self.lsp_client.is_initialized:
-            self.lsp_client.shutdown()  # send shutdown...
-            self.get_msg_by_type(lsp.Shutdown)  # receive shutdown...
-            self.lsp_client.exit()  # send exit...
-            self._process_qs()  # give data to send-thread
+    def exit_cleanly(self):
+        # Not necessarily error, gopls sends logging messages for example
+        #        if self.msgs:
+        #            print(
+        #                "* unprocessed messages: " + pprint.pformat(self.msgs)
+        #            )
+
+        assert self.lsp_client.is_initialized
+        self.lsp_client.shutdown()
+        self.wait_for_message_of_type(lsp.Shutdown)
+        self.lsp_client.exit()
+        self._queue_data_to_send()
+        self._read_data_received()
+
+    def do_method(self, text, file_uri, method, response_type=None):
+        def doc_pos():  # SKIP
+            x, y = get_meth_text_pos(text=text, method=method)
+            return lsp.TextDocumentPosition(
+                textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
+                position=lsp.Position(line=y, character=x),
+            )
+
+        if not response_type:
+            response_type = RESPONSE_TYPES[method]
+
+        if method == METHOD_COMPLETION:
+            event_id = self.lsp_client.completion(
+                text_document_position=doc_pos(),
+                context=lsp.CompletionContext(
+                    triggerKind=lsp.CompletionTriggerKind.INVOKED
+                ),
+            )
+        elif method == METHOD_HOVER:
+            event_id = self.lsp_client.hover(text_document_position=doc_pos())
+        elif method == METHOD_SIG_HELP:
+            event_id = self.lsp_client.signatureHelp(text_document_position=doc_pos())
+        elif method == METHOD_DEFINITION:
+            event_id = self.lsp_client.definition(text_document_position=doc_pos())
+        elif method == METHOD_REFERENCES:
+            event_id = self.lsp_client.references(text_document_position=doc_pos())
+        elif method == METHOD_IMPLEMENTATION:
+            event_id = self.lsp_client.implementation(text_document_position=doc_pos())
+        elif method == METHOD_DECLARATION:
+            event_id = self.lsp_client.declaration(text_document_position=doc_pos())
+        elif method == METHOD_TYPEDEF:
+            event_id = self.lsp_client.typeDefinition(text_document_position=doc_pos())
+        elif method == METHOD_DOC_SYMBOLS:
+            _docid = lsp.TextDocumentIdentifier(uri=file_uri)
+            event_id = self.lsp_client.documentSymbol(text_document=_docid)
         else:
-            self.process.kill()
+            raise NotImplementedError(method)
+
+        resp = self.wait_for_message_of_type(response_type)
+        assert not hasattr(resp, "message_id") or resp.message_id == event_id
+        return resp
 
 
 test_langservers = pathlib.Path(__file__).absolute().parent / "test_langservers"
@@ -212,19 +250,15 @@ SERVER_COMMANDS = {
 
 
 @contextlib.contextmanager
-def start_server(langserver_name, tmp_path_factory):
+def start_server(langserver_name, project_root, file_contents):
     command = SERVER_COMMANDS[langserver_name]
-    project_root = tmp_path_factory.mktemp("tmp_" + langserver_name)
 
-    if langserver_name == SERVER_GOPLS:
-        # create file(s) before starting server, jic
-        for fn, text in files_go.items():
-            path = project_root / fn
-            path.write_text(text)
+    # Create files before langserver starts
+    for fn, text in file_contents.items():
+        path = project_root / fn
+        path.write_text(text)
 
-    process = subprocess.Popen(
-        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE
-    )
+    process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     tserver = ThreadedServer(process, project_root.as_uri())
 
     try:
@@ -234,120 +268,13 @@ def start_server(langserver_name, tmp_path_factory):
         process.kill()
         raise e
 
-    if tserver.msgs:
-        print(
-            "* unprocessed messages:",
-            ", ".join(type(m).__name__ for m in tserver.msgs),
-        )
-
-    tserver.stop()
+    tserver.exit_cleanly()
 
 
-def do_server_method(tserver, text, file_uri, method, response_type=None):
-    def doc_pos():  # SKIP
-        x, y = get_meth_text_pos(text=text, method=method)
-        return lsp.TextDocumentPosition(
-            textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
-            position=lsp.Position(line=y, character=x),
-        )
-
-    if not response_type:
-        response_type = RESPONSE_TYPES[method]
-
-    if method == METHOD_COMPLETION:
-        event_id = tserver.lsp_client.completion(
-            text_document_position=doc_pos(),
-            context=lsp.CompletionContext(
-                triggerKind=lsp.CompletionTriggerKind.INVOKED
-            ),
-        )
-    elif method == METHOD_HOVER:
-        event_id = tserver.lsp_client.hover(text_document_position=doc_pos())
-
-    elif method == METHOD_SIG_HELP:
-        event_id = tserver.lsp_client.signatureHelp(text_document_position=doc_pos())
-
-    elif method == METHOD_DEFINITION:
-        event_id = tserver.lsp_client.definition(text_document_position=doc_pos())
-
-    elif method == METHOD_REFERENCES:
-        event_id = tserver.lsp_client.references(text_document_position=doc_pos())
-
-    elif method == METHOD_IMPLEMENTATION:
-        event_id = tserver.lsp_client.implementation(text_document_position=doc_pos())
-
-    elif method == METHOD_DECLARATION:
-        event_id = tserver.lsp_client.declaration(text_document_position=doc_pos())
-
-    elif method == METHOD_TYPEDEF:
-        event_id = tserver.lsp_client.typeDefinition(text_document_position=doc_pos())
-
-    elif method == METHOD_DOC_SYMBOLS:
-        _docid = lsp.TextDocumentIdentifier(uri=file_uri)
-        event_id = tserver.lsp_client.documentSymbol(text_document=_docid)
-
-    else:
-        raise NotImplementedError(method)
-
-    # "blocking" -- will wait for message
-    resp = tserver.get_msg_by_type(response_type)
-    assert not hasattr(resp, "message_id") or resp.message_id == event_id
-    return resp
-
-
-c_args = (
-    "foo.c",
-    textwrap.dedent(
-        f"""\
-        #include <stdio.h>
-        void do_foo(void);
-        void do_foo(void) {{//#{METHOD_DECLARATION}-13
-        }}
-        int do_bar(char x, long y) {{
-            short z = x + y;
-        }}
-
-        int main(void) {{ do_ //#{METHOD_COMPLETION}-3"""
-    ),
-    "c",
-)
-files_go = {
-    "foo.go": textwrap.dedent(
-        f"""\
-        package main
-
-        import "fmt"
-
-        type Creature struct {{
-            Name string
-        }}
-        func (c*Creature) Dump() {{
-            fmt.Printf("Name: '%s'", c.Name)
-        }}
-
-        func doSomethingWithFoo(x, y) string {{
-            blah := x + y
-            cat := &Creature{{"cat"}} //#{METHOD_TYPEDEF}-18
-            cat := &Creature{{"cat"}} //#{METHOD_IMPLEMENTATION}-14
-            cat.Dump() //#{METHOD_IMPLEMENTATION}-7
-            return asdf asdf
-        }}
-        var s1 = doS //#{METHOD_COMPLETION}-3"""
-    ),
-    "go.mod": textwrap.dedent(
-        """\
-        module example.com/hellp
-
-        go 1.10
-        """
-    ),
-}
-
-
-def check_that_langserver_works(langserver_name, tmp_path_factory):
-    with start_server(langserver_name, tmp_path_factory) as (tserver, project_root):
-        if langserver_name == "pyls":
-            text = textwrap.dedent(
+def check_that_langserver_works(langserver_name, tmp_path):
+    if langserver_name == "pyls":
+        file_contents = {
+            "foo.py": textwrap.dedent(
                 f"""\
                 import sys
                 def do_foo(): #{METHOD_DEFINITION}-5
@@ -357,11 +284,13 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
 
                 do_ #{METHOD_COMPLETION}-1"""
             )
-            filename = "foo.py"
-            language_id = "python"
+        }
+        filename = "foo.py"
+        language_id = "python"
 
-        elif langserver_name == "js":
-            text = textwrap.dedent(
+    elif langserver_name == "js":
+        file_contents = {
+            "foo.js": textwrap.dedent(
                 f"""\
                 function doSomethingWithFoo(x, y) {{
                     const blah = x + y;
@@ -370,33 +299,83 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
 
                 doS //#{METHOD_COMPLETION}-3"""
             )
-            filename = "foo.js"
-            language_id = "javascript"
+        }
+        filename = "foo.js"
+        language_id = "javascript"
 
-        elif langserver_name in ("clangd_10", "clangd_11"):
-            filename, text, language_id = c_args
+    elif langserver_name in ("clangd_10", "clangd_11"):
+        file_contents = {
+            "foo.c": textwrap.dedent(
+                f"""\
+                #include <stdio.h>
+                void do_foo(void);
+                void do_foo(void) {{//#{METHOD_DECLARATION}-13
+                }}
+                int do_bar(char x, long y) {{
+                    short z = x + y;
+                }}
 
-        elif langserver_name == "gopls":
-            language_id = "go"
-            [filename] = [fn for fn in files_go if fn.endswith(".go")]
-            text = files_go[filename]
-        else:
-            raise ValueError(langserver_name)
+                int main(void) {{ do_ //#{METHOD_COMPLETION}-3"""
+            )
+        }
+        filename = "foo.c"
+        language_id = "c"
 
-        path = project_root / filename
-        path.write_text(text)
+    elif langserver_name == "gopls":
+        file_contents = {
+            "foo.go": textwrap.dedent(
+                f"""\
+                package main
 
+                import "fmt"
+
+                type Creature struct {{
+                    Name string
+                }}
+                func (c*Creature) Dump() {{
+                    fmt.Printf("Name: '%s'", c.Name)
+                }}
+
+                func doSomethingWithFoo(x, y) string {{
+                    blah := x + y
+                    cat := &Creature{{"cat"}} //#{METHOD_TYPEDEF}-18
+                    cat := &Creature{{"cat"}} //#{METHOD_IMPLEMENTATION}-14
+                    cat.Dump() //#{METHOD_IMPLEMENTATION}-7
+                    return asdf asdf
+                }}
+                var s1 = doS //#{METHOD_COMPLETION}-3"""
+            ),
+            "go.mod": textwrap.dedent(
+                """\
+                module example.com/hellp
+
+                go 1.10
+                """
+            ),
+        }
+        filename = "foo.go"
+        language_id = "go"
+    else:
+        raise ValueError(langserver_name)
+
+    with start_server(langserver_name, tmp_path, file_contents) as (
+        tserver,
+        project_root,
+    ):
         # Initialized #####
-        tserver.get_msg_by_type(lsp.Initialized)
+        tserver.wait_for_message_of_type(lsp.Initialized)
         tserver.lsp_client.did_open(
             lsp.TextDocumentItem(
-                uri=path.as_uri(), languageId=language_id, text=text, version=0
+                uri=(project_root / filename).as_uri(),
+                languageId=language_id,
+                text=file_contents[filename],
+                version=0,
             )
         )
 
         # Diagnostics #####
-        diagnostics = tserver.get_msg_by_type(lsp.PublishDiagnostics)
-        assert diagnostics.uri == path.as_uri()
+        diagnostics = tserver.wait_for_message_of_type(lsp.PublishDiagnostics)
+        assert diagnostics.uri == (project_root / filename).as_uri()
         diag_msgs = [diag.message for diag in diagnostics.diagnostics]
 
         if langserver_name == "pyls":
@@ -404,9 +383,7 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
             assert "E302 expected 2 blank lines, found 0" in diag_msgs
             assert "W292 no newline at end of file" in diag_msgs
         elif langserver_name == "js":
-            assert diag_msgs == [
-                "';' expected."
-            ]
+            assert diag_msgs == ["';' expected."]
         elif langserver_name in ("clangd_10", "clangd_11"):
             assert diag_msgs == [
                 "Non-void function does not return a value",
@@ -414,23 +391,22 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
                 "Expected '}'",
             ]
         elif langserver_name == "gopls":
-            assert diag_msgs == [
-                "expected ';', found asdf"
-            ]
+            assert diag_msgs == ["expected ';', found asdf"]
         else:
             raise ValueError(langserver_name)
 
-        do_method = functools.partial(do_server_method, tserver, text, path.as_uri())
+        do_method = functools.partial(
+            tserver.do_method,
+            file_contents[filename],
+            (project_root / filename).as_uri(),
+        )
 
         # Completions #####
         completions = do_method(METHOD_COMPLETION)
         completion_labels = [item.label for item in completions.completion_list.items]
 
         if langserver_name == "pyls":
-            assert completion_labels == [
-                "do_bar()",
-                "do_foo()"
-            ]
+            assert completion_labels == ["do_bar()", "do_foo()"]
         elif langserver_name in ("js", "gopls"):
             assert "doSomethingWithFoo" in completion_labels
         elif langserver_name in ("clangd_10", "clangd_11"):
@@ -438,8 +414,6 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
             assert " do_bar(char x, long y)" in completion_labels
         else:
             raise ValueError(langserver_name)
-
-        # Other #####
 
         if langserver_name == "pyls":
             # Hover #####
@@ -468,60 +442,55 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
                 if isinstance(definitions.result, list)
                 else definitions.result
             )
-            assert isinstance(item, (lsp.Location, lsp.LocationLink))
-            if isinstance(item, lsp.Location):
-                assert item.uri == path.as_uri()
-                definition_line = next(
-                    i
-                    for i, line in enumerate(text.splitlines())
-                    if METHOD_DEFINITION in line
-                )
-                assert item.range.start.line == definition_line
-            else:  # LocationLink
-                raise NotImplementedError("pyls `LocationLink` definition results")
+            assert isinstance(item, lsp.Location)  # TODO: could also be LocationLink
+            assert item.uri == (project_root / filename).as_uri()
+            assert (
+                METHOD_DEFINITION
+                in file_contents["foo.py"].splitlines()[item.range.start.line]
+            )
 
             # references #####
-            refs = do_method(METHOD_REFERENCES)
-
-            assert len(refs.result) == 1
-            item = refs.result[0]
+            [item] = do_method(METHOD_REFERENCES).result
             assert isinstance(item, lsp.Location)
-            ref_line = next(
-                i
-                for i, line in enumerate(text.splitlines())
-                if METHOD_REFERENCES in line
+            assert item.uri == (project_root / filename).as_uri()
+            assert (
+                METHOD_REFERENCES
+                in file_contents["foo.py"].splitlines()[item.range.start.line]
             )
-            assert item.range.start.line == ref_line
 
             # documentSymbol #####
             doc_symbols = do_method(METHOD_DOC_SYMBOLS)
             assert len(doc_symbols.result) == 3
-            symb_names = {s.name for s in doc_symbols.result}
-            assert symb_names == {"sys", "do_foo", "do_bar"}
+            assert {s.name for s in doc_symbols.result} == {"sys", "do_foo", "do_bar"}
 
             # formatting #####
             tserver.lsp_client.formatting(
-                text_document=lsp.TextDocumentIdentifier(uri=path.as_uri()),
+                text_document=lsp.TextDocumentIdentifier(
+                    uri=(project_root / filename).as_uri()
+                ),
                 options=lsp.FormattingOptions(tabSize=4, insertSpaces=True),
             )
-            formatting = tserver.get_msg_by_type(RESPONSE_TYPES[METHOD_FORMAT_DOC])
+            formatting = tserver.wait_for_message_of_type(
+                RESPONSE_TYPES[METHOD_FORMAT_DOC]
+            )
             assert formatting.result
 
             # Error -- method not supported by server #####
+            # This creates a scary exception in pytest output. That's expected.
             tserver.lsp_client.workspace_symbol()
-            err = tserver.get_msg_by_type(lsp.ResponseError)
+            err = tserver.wait_for_message_of_type(lsp.ResponseError)
             assert err.message == "Method Not Found: workspace/symbol"
 
         if langserver_name == "clangd_11":  # TODO: would this work for clangd 10?
             # workspace/symbol #####
             # TODO - empty for some reason
             # tserver.lsp_client.workspace_symbol()
-            # w_symb = tserver.get_msg_by_type(lsp.MWorkspaceSymbols)
+            # w_symb = tserver.wait_for_message_of_type(lsp.MWorkspaceSymbols)
 
             # declaration #####
             declaration = do_method(METHOD_DECLARATION)
             assert len(declaration.result) == 1
-            assert declaration.result[0].uri == path.as_uri()
+            assert declaration.result[0].uri == (project_root / filename).as_uri()
 
         if langserver_name == "gopls":
             # implementation #####
@@ -532,7 +501,7 @@ def check_that_langserver_works(langserver_name, tmp_path_factory):
             # typeDefinition #####
             typedef = do_method(METHOD_TYPEDEF)
             assert len(typedef.result) == 1
-            assert typedef.result[0].uri == path.as_uri()
+            assert typedef.result[0].uri == (project_root / filename).as_uri()
 
 
 def _needs_clangd(version):
@@ -542,8 +511,8 @@ def _needs_clangd(version):
     )
 
 
-def test_pyls(tmp_path_factory):
-    check_that_langserver_works("pyls", tmp_path_factory)
+def test_pyls(tmp_path):
+    check_that_langserver_works("pyls", tmp_path)
 
 
 @pytest.mark.skipif(
@@ -551,29 +520,29 @@ def test_pyls(tmp_path_factory):
     reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
-def test_javascript_typescript_langserver(tmp_path_factory):
-    check_that_langserver_works("js", tmp_path_factory)
+def test_javascript_typescript_langserver(tmp_path):
+    check_that_langserver_works("js", tmp_path)
 
 
 @pytest.mark.skipif(
     sys.platform == "win32", reason="don't know how clangd works on windows"
 )
 @pytest.mark.skipif(_clangd_10 is None, reason="clangd 10 not found")
-def test_clangd_10(tmp_path_factory):
-    check_that_langserver_works("clangd_10", tmp_path_factory)
+def test_clangd_10(tmp_path):
+    check_that_langserver_works("clangd_10", tmp_path)
 
 
 @pytest.mark.skipif(
     sys.platform == "win32", reason="don't know how clangd works on windows"
 )
 @pytest.mark.skipif(_clangd_11 is None, reason="clangd 11 not found")
-def test_clangd_11(tmp_path_factory):
-    check_that_langserver_works("clangd_11", tmp_path_factory)
+def test_clangd_11(tmp_path):
+    check_that_langserver_works("clangd_11", tmp_path)
 
 
 @pytest.mark.skipif(
     not (test_langservers / "bin" / "gopls").exists(),
     reason="gopls not installed in test_langservers/",
 )
-def test_gopls(tmp_path_factory):
-    check_that_langserver_works("gopls", tmp_path_factory)
+def test_gopls(tmp_path):
+    check_that_langserver_works("gopls", tmp_path)
