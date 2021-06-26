@@ -29,4 +29,4 @@ Extract it inside `tests/` so that you get a folder named `sansio-lsp-client/tes
 
 Then run the tests:
 
-    $ PATH="$PATH:$(pwd)/tests/go/bin" poetry run pytest
+    (env)$ PATH="$PATH:$(pwd)/tests/go/bin" poetry run pytest
