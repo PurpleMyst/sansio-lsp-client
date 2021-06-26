@@ -100,7 +100,7 @@ class ThreadedServer:
     def _read_loop(self):
         try:
             while True:
-                data = self._pout.read(1)
+                data = self.process.stdout.read(1)
 
                 if data == b"":
                     break
@@ -114,15 +114,13 @@ class ThreadedServer:
     def _send_loop(self):
         try:
             while True:
-                buf = self._send_q.get()
-
-                if buf is None:
+                chunk = self._send_q.get()
+                if chunk is None:
                     break
 
                 # print(f"\nsending: {buf}\n")
-
-                self._pin.write(buf)
-                self._pin.flush()
+                self.process.stdin.write(chunk)
+                self.process.stdin.flush()
         except Exception as ex:
             self.exception = ex
 
