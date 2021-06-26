@@ -5,17 +5,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Mypy
-    strategy:
-      matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.9
     - name: Install Dependencies
       run: |
         pip install poetry && poetry install
     - name: mypy
       run: |
-        poetry run python3 -m mypy --strict sansio_lsp_client
+        poetry run python3 -m mypy --python-version 3.6 --strict sansio_lsp_client
+        poetry run python3 -m mypy --python-version 3.7 --strict sansio_lsp_client
+        poetry run python3 -m mypy --python-version 3.8 --strict sansio_lsp_client
+        poetry run python3 -m mypy --python-version 3.9 --strict sansio_lsp_client
