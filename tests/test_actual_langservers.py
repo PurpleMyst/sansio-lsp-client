@@ -103,7 +103,7 @@ test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
 
 
 @pytest.mark.skipif(
-    not (test_langservers / "node_modules/.bin/javascript-typescript-stdio").exists(),
+    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
     reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
