@@ -1,6 +1,4 @@
-import os
 import enum
-import pprint
 import typing as t
 import logging
 
@@ -349,16 +347,18 @@ class Client:
             return parse_request(PublishDiagnostics)
 
         elif request.method == "window/workDoneProgress/create":
+            assert request.params is not None
             ev = parse_request(WorkDoneProgressCreate)
             self._progress_tokens_map[request.params["token"]] = WorkDoneProgress
             return parse_request(WorkDoneProgressCreate)
 
         elif request.method == "$/progress":
+            assert request.params is not None
             progress_type = self._progress_tokens_map.get(request.params["token"])
 
             if progress_type == WorkDoneProgress:
-                kind = request.params["value"]["kind"]
-                kind = MWorkDoneProgressKind(kind)
+                assert request.params is not None
+                kind = MWorkDoneProgressKind(request.params["value"]["kind"])
 
                 if kind == MWorkDoneProgressKind.BEGIN:
                     return parse_request(WorkDoneProgressBegin)

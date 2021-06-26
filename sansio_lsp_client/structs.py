@@ -92,8 +92,8 @@ class TextDocumentContentChangeEvent(BaseModel):
     range: t.Optional[Range]
     rangeLength: t.Optional[int]  # deprecated, use .range
 
-    def dict(self) -> t.Dict[str, t.Any]:
-        d = super(TextDocumentContentChangeEvent, self).dict()
+    def dict(self, **kwargs: t.Any) -> t.Dict[str, t.Any]:
+        d = super().dict(**kwargs)
 
         # vscode-css server requires un-filled values to be absent
         if self.rangeLength is None:
