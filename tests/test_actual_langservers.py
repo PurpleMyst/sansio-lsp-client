@@ -113,7 +113,7 @@ class ThreadedServer:
     # threaded
     def _send_loop(self):
         try:
-            while self._pin:
+            while True:
                 buf = self._send_q.get()
 
                 if buf is None:
