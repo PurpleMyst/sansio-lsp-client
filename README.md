@@ -21,4 +21,4 @@ TODO: add instructions for looking at coverage files on Windows
 To run tests, first download the langservers you need by reading `.github/workflows/test.yml`.
 Then run the tests:
 
-    $ PATH="$PATH:$(pwd)/tests/go/bin" poetry run pytest
+    (env)$ poetry run pytest
