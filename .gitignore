@@ -136,3 +136,4 @@ tags
 # test stuff
 test_langservers/
 /cov.xml
+go/

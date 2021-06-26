@@ -1,3 +1,4 @@
+import pprint
 import pathlib
 import platform
 import shutil
@@ -194,7 +195,7 @@ class ThreadedServer:
         # end while
 
         raise Exception(
-            f'Didn`t receive "{_type}" in time; have: {[type(m).__name__ for m in self.msgs]}'
+            f"Didn`t receive {_type} in time; have: " + pprint.pprint(self.msgs)
         )
 
     def stop(self):
@@ -227,7 +228,7 @@ SERVER_COMMANDS = {
     SERVER_CLANGD_11: lambda: [
         next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"
     ],
-    SERVER_GOPLS: lambda: ["gopls"],
+    SERVER_GOPLS: lambda: [test_langservers / "bin" / "gopls"],
 }
 
 
@@ -353,7 +354,7 @@ def test_pyls(server_pyls):
     path.write_text(text)
     language_id = "python"
 
-    inited = tserver.get_msg_by_type(lsp.Initialized)
+    tserver.get_msg_by_type(lsp.Initialized)
 
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -466,7 +467,7 @@ def test_javascript_typescript_langserver(server_js):
     language_id = "javascript"
 
     # Init #####
-    inited = tserver.get_msg_by_type(lsp.Initialized)
+    tserver.get_msg_by_type(lsp.Initialized)
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -530,7 +531,7 @@ def test_clangd_10(server_clangd_10):
     path.write_text(text)
 
     # Init #####
-    inited = tserver.get_msg_by_type(lsp.Initialized)
+    tserver.get_msg_by_type(lsp.Initialized)
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -565,7 +566,7 @@ def test_clangd_11(server_clangd_11):
     path.write_text(text)
 
     # Init #####
-    inited = tserver.get_msg_by_type(lsp.Initialized)
+    tserver.get_msg_by_type(lsp.Initialized)
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
@@ -634,6 +635,10 @@ files_go = {
 }
 
 
+@pytest.mark.skipif(
+    not (test_langservers / "bin" / "gopls").exists(),
+    reason="gopls not installed in test_langservers/",
+)
 def test_gopls(server_gopls):
     # lsp_client, project_root, event_iter = server_gopls
     tserver, project_root = server_gopls
@@ -646,7 +651,7 @@ def test_gopls(server_gopls):
     text = files_go[filename]
 
     # Init #####
-    inited = tserver.get_msg_by_type(lsp.Initialized)
+    tserver.get_msg_by_type(lsp.Initialized)
     # DidOpen file #####
     tserver.lsp_client.did_open(
         lsp.TextDocumentItem(
