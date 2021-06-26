@@ -541,6 +541,9 @@ def test_clangd_11(tmp_path):
 
 
 @pytest.mark.skipif(
+    sys.platform == "win32", reason="don't know how go works on windows"
+)
+@pytest.mark.skipif(
     not (test_langservers / "bin" / "gopls").exists(),
     reason="gopls not installed in test_langservers/",
 )
