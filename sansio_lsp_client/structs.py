@@ -54,14 +54,14 @@ class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
     version: t.Optional[int]
 
 
+# Sorting tip:  sorted(positions, key=(lambda p: (p.line, p.character)))
 class Position(BaseModel):
     # NB: These are both zero-based.
     line: int
     character: int
 
-    # for sorting
-    def __lt__(self, other: "Position") -> bool:
-        return (self.line, self.character) < (other.line, other.character)
+    def as_tuple(self) -> t.Tuple[int, int]:
+        return (self.line, self.character)
 
 
 class Range(BaseModel):
@@ -260,6 +260,7 @@ class DiagnosticSeverity(enum.IntEnum):
     INFORMATION = 3
     HINT = 4
 
+    # TODO: delete this? it's easy to implement in your editor if you really need it
     def short_name(self) -> str:
         return {
             self.ERROR: "Err",
@@ -380,14 +381,9 @@ class DocumentSymbol(BaseModel):  # symbols: hierarchy
     tags: t.Optional[t.List[SymbolTag]]
     deprecated: t.Optional[bool]
     range: Range
-    selectionRange: Range
+    selectionRange: Range  # Example: symbol.selectionRange.start.as_tuple()
     # https://stackoverflow.com/questions/36193540
     children: t.Optional[t.List["DocumentSymbol"]]
-
-    def pos(self) -> t.Tuple[int, int]:
-        """ returns (x,y)
-        """
-        return self.selectionRange.start.character, self.selectionRange.start.line
 
 
 # for `.children` treeeness

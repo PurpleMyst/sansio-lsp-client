@@ -175,7 +175,7 @@ class ThreadedServer:
             time.sleep(0.2)
 
         raise Exception(
-            f"Didn't receive {type_} in time; have: " + pprint.pprint(self.msgs)
+            f"Didn't receive {type_} in time; have: " + pprint.pformat(self.msgs)
         )
 
     def exit_cleanly(self):
@@ -235,17 +235,17 @@ class ThreadedServer:
         return resp
 
 
-test_langservers = pathlib.Path(__file__).absolute().parent / "test_langservers"
+langserver_dir = pathlib.Path(__file__).absolute().parent / "langservers"
 
 
-_clangd_10 = next(test_langservers.glob("clangd_10.*/bin/clangd"), None)
-_clangd_11 = next(test_langservers.glob("clangd_11.*/bin/clangd"), None)
+_clangd_10 = next(langserver_dir.glob("clangd_10.*/bin/clangd"), None)
+_clangd_11 = next(langserver_dir.glob("clangd_11.*/bin/clangd"), None)
 SERVER_COMMANDS = {
     "pyls": [sys.executable, "-m", "pyls"],
-    "js": [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+    "js": [langserver_dir / "node_modules/.bin/javascript-typescript-stdio"],
     "clangd_10": [_clangd_10],
     "clangd_11": [_clangd_11],
-    "gopls": [test_langservers / "bin" / "gopls"],
+    "gopls": [langserver_dir / "bin" / "gopls"],
 }
 
 
@@ -506,7 +506,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
 def _needs_clangd(version):
     return pytest.mark.skipif(
-        not list(test_langservers.glob(f"clangd_{version}.*")),
+        not list(langserver_dir.glob(f"clangd_{version}.*")),
         reason=f"clangd {version} not found",
     )
 
@@ -516,7 +516,7 @@ def test_pyls(tmp_path):
 
 
 @pytest.mark.skipif(
-    not (test_langservers / "node_modules/.bin/javascript-typescript-stdio").exists(),
+    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
     reason="javascript-typescript-langserver not found",
 )
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
@@ -544,8 +544,8 @@ def test_clangd_11(tmp_path):
     sys.platform == "win32", reason="don't know how go works on windows"
 )
 @pytest.mark.skipif(
-    not (test_langservers / "bin" / "gopls").exists(),
-    reason="gopls not installed in test_langservers/",
+    not (langserver_dir / "bin" / "gopls").exists(),
+    reason="gopls not installed in tests/langservers/bin/gopls",
 )
 def test_gopls(tmp_path):
     check_that_langserver_works("gopls", tmp_path)
