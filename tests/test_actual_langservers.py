@@ -99,13 +99,13 @@ def test_pyls(tmp_path):
     ]
 
 
-test_langservers = pathlib.Path(__name__).absolute().parent / "test_langservers"
+langserver_dir = pathlib.Path(__file__).absolute().parent / "langservers"
 
 
-@pytest.mark.skipif(
-    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
-    reason="javascript-typescript-langserver not found",
-)
+#@pytest.mark.skipif(
+#    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
+#    reason="javascript-typescript-langserver not found",
+#)
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
 def test_javascript_typescript_langserver(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
@@ -121,7 +121,7 @@ def test_javascript_typescript_langserver(tmp_path):
             doS"""
         ),
         "javascript",
-        [test_langservers / "node_modules/.bin/javascript-typescript-stdio"],
+        [langserver_dir / "node_modules/.bin/javascript-typescript-stdio"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == ["';' expected."]
     assert "doSomethingWithFoo" in [
@@ -136,7 +136,7 @@ def clangd_decorator(version):
             reason="don't know how clangd works on windows",
         )(function)
         function = pytest.mark.skipif(
-            not list(test_langservers.glob(f"clangd_{version}.*")),
+            not list(langserver_dir.glob(f"clangd_{version}.*")),
             reason=f"clangd {version} not found",
         )(function)
         return function
@@ -166,7 +166,7 @@ def test_clangd_10(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
         *c_args,
-        [next(test_langservers.glob("clangd_10.*")) / "bin" / "clangd"],
+        [next(langserver_dir.glob("clangd_10.*")) / "bin" / "clangd"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
@@ -184,7 +184,7 @@ def test_clangd_11(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
         tmp_path,
         *c_args,
-        [next(test_langservers.glob("clangd_11.*")) / "bin" / "clangd"],
+        [next(langserver_dir.glob("clangd_11.*")) / "bin" / "clangd"],
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",

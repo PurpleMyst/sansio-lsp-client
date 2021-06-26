@@ -1,18 +1,9 @@
 import sansio_lsp_client as lsp
 
 
-def test_severity_short_name():
-    assert lsp.DiagnosticSeverity.WARNING.name == "WARNING"
-    assert lsp.DiagnosticSeverity.WARNING.short_name() == "Wrn"
-
-
-def test_as_tuple():
-    assert lsp.Position(line=123, character=4).as_tuple() == (123, 4)
-
-
 def test_change_range():
     # "foo\nbar2 --> "fOO\nbar"
-    assert lsp.TextDocumentContentChangeEvent.range_change(
+    assert lsp.TextDocumentContentChangeEvent.change_range(
         lsp.Position(line=0, character=1),
         lsp.Position(line=0, character=3),
         "OO",
@@ -27,7 +18,7 @@ def test_change_range():
     )
 
     # "foo\nbar\nbaz" --> "foLOLz"
-    assert lsp.TextDocumentContentChangeEvent.range_change(
+    assert lsp.TextDocumentContentChangeEvent.change_range(
         lsp.Position(line=0, character=2),
         lsp.Position(line=2, character=2),
         "LOL",
