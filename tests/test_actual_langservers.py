@@ -164,9 +164,7 @@ c_args = (
 @clangd_decorator(10)
 def test_clangd_10(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        *c_args,
-        [next(langserver_dir.glob("clangd_10.*")) / "bin" / "clangd"],
+        tmp_path, *c_args, [next(langserver_dir.glob("clangd_10.*")) / "bin" / "clangd"]
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
@@ -182,9 +180,7 @@ def test_clangd_10(tmp_path):
 @clangd_decorator(11)
 def test_clangd_11(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
-        tmp_path,
-        *c_args,
-        [next(langserver_dir.glob("clangd_11.*")) / "bin" / "clangd"],
+        tmp_path, *c_args, [next(langserver_dir.glob("clangd_11.*")) / "bin" / "clangd"]
     )
     assert [diag.message for diag in diagnostics.diagnostics] == [
         "Non-void function does not return a value",
