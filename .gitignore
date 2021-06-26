@@ -134,5 +134,5 @@ tags
 
 
 # test stuff
-/cov.xml
 tests/langservers/
+/cov.xml

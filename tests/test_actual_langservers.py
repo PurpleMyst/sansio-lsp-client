@@ -102,10 +102,10 @@ def test_pyls(tmp_path):
 langserver_dir = pathlib.Path(__file__).absolute().parent / "langservers"
 
 
-#@pytest.mark.skipif(
-#    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
-#    reason="javascript-typescript-langserver not found",
-#)
+@pytest.mark.skipif(
+    not (langserver_dir / "node_modules/.bin/javascript-typescript-stdio").exists(),
+    reason="javascript-typescript-langserver not found",
+)
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not found in $PATH")
 def test_javascript_typescript_langserver(tmp_path):
     diagnostics, completions = do_stuff_with_a_langserver(
