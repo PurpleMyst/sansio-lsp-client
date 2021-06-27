@@ -244,7 +244,7 @@ class Location(BaseModel):
 
 class LocationLink(BaseModel):
     originSelectionRange: t.Optional[Range]
-    targetUri: str  # DocumentUri...
+    targetUri: str  # in the spec the type is DocumentUri
     targetRange: Range
     targetSelectionRange: Range
 
