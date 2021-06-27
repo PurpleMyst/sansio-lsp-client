@@ -282,6 +282,7 @@ class Client:
         # GOTOs
         elif request.method == "textDocument/definition":
             event = parse_obj_as(Definition, response)
+            event.message_id = response.id
 
         elif request.method == "textDocument/references":
             event = parse_obj_as(References, response)

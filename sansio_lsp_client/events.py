@@ -160,6 +160,7 @@ class SignatureHelp(Event):
 
 
 class Definition(Event):
+    message_id: t.Optional[Id]
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
 
 
