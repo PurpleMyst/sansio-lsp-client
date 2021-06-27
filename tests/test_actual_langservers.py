@@ -192,7 +192,7 @@ class ThreadedServer:
         self._read_data_received()
 
     def do_method(self, text, file_uri, method, response_type=None):
-        def doc_pos():  # SKIP
+        def doc_pos():
             x, y = get_meth_text_pos(text=text, method=method)
             return lsp.TextDocumentPosition(
                 textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
