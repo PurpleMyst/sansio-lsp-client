@@ -1,11 +1,6 @@
 import sansio_lsp_client as lsp
 
 
-def test_severity_short_name():
-    assert lsp.DiagnosticSeverity.WARNING.name == "WARNING"
-    assert lsp.DiagnosticSeverity.WARNING.short_name() == "Wrn"
-
-
 def test_as_tuple():
     assert lsp.Position(line=123, character=4).as_tuple() == (123, 4)
 

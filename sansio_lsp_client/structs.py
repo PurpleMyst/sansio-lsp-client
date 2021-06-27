@@ -260,15 +260,6 @@ class DiagnosticSeverity(enum.IntEnum):
     INFORMATION = 3
     HINT = 4
 
-    # TODO: delete this? it's easy to implement in your editor if you really need it
-    def short_name(self) -> str:
-        return {
-            self.ERROR: "Err",
-            self.WARNING: "Wrn",
-            self.INFORMATION: "Inf",
-            self.HINT: "Hint",
-        }[self]
-
 
 class Diagnostic(BaseModel):
     range: Range
