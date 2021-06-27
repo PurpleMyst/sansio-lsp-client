@@ -356,7 +356,8 @@ class TextDocumentSyncKind(enum.IntEnum):
     INCREMENTAL = 2
 
 
-class SymbolInformation(BaseModel):  # symbols: flat list
+# Usually in a flat list
+class SymbolInformation(BaseModel):
     name: str
     kind: SymbolKind
     tags: t.Optional[t.List[SymbolTag]]
@@ -365,7 +366,9 @@ class SymbolInformation(BaseModel):  # symbols: flat list
     containerName: t.Optional[str]
 
 
-class DocumentSymbol(BaseModel):  # symbols: hierarchy
+# Usually a hierarchy, e.g. a symbol with kind=SymbolKind.CLASS contains
+# several SymbolKind.METHOD symbols
+class DocumentSymbol(BaseModel):
     name: str
     detail: t.Optional[str]
     kind: SymbolKind
@@ -377,7 +380,7 @@ class DocumentSymbol(BaseModel):  # symbols: hierarchy
     children: t.Optional[t.List["DocumentSymbol"]]
 
 
-# for `.children` treeeness
+# for `.children` treeness
 DocumentSymbol.update_forward_refs()
 
 
