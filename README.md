@@ -27,6 +27,6 @@ Extract it inside `tests/` so that you get a folder named `sansio-lsp-client/tes
     $ cd tests
     $ tar xf /blah/blah/Downloads/go1.16.5.linux-amd64.tar.gz
 
-Then run the tests:
+Once you have installed all langservers you want, you can run the tests:
 
     (env)$ PATH="$PATH:$(pwd)/tests/go/bin" poetry run pytest
