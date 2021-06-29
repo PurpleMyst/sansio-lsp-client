@@ -480,7 +480,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             err = tserver.wait_for_message_of_type(lsp.ResponseError)
             assert err.message == "Method Not Found: workspace/symbol"
 
-        if langserver_name == "clangd_11":  # TODO: would this work for clangd 10?
+        if langserver_name in ("clangd_10", "clangd_11"):
             # workspace/symbol #####
             # TODO - empty for some reason
             # tserver.lsp_client.workspace_symbol()

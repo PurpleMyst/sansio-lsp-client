@@ -1,0 +1,1 @@
+from sansio_lsp_client import CompletionItem
