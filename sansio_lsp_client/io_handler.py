@@ -133,8 +133,8 @@ def _parse_one_message(
 
     # Take only as many bytes as we need. If there's any remaining, they're
     # the next response's.
+    unused_bytes_count = len(raw_content) - content_length
     raw_content = raw_content[:content_length]
-    unused_bytes_count = len(raw_content[content_length:])
 
     # This is a good place for deleting unnecessary stuff from response_buf
     # because if the code below fails, then leaving the cause of failure to
