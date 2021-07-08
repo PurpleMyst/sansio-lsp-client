@@ -49,10 +49,7 @@ class ThreadedServer:
     def __init__(self, process, root_uri):
         self.process = process
         self.root_uri = root_uri
-        self.lsp_client = lsp.Client(
-            root_uri=root_uri,
-            trace="verbose",
-        )
+        self.lsp_client = lsp.Client(root_uri=root_uri, trace="verbose")
         self.lsp_client._recv_catches_and_logs_errors = False
         self.msgs = []
 
@@ -332,11 +329,11 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert diag_msgs == ["';' expected."]
         elif langserver_name in ("clangd_10", "clangd_11"):
             assert diag_msgs == [
-                'Non-void function does not return a value',
-                 "Use of undeclared identifier 'do_'",
-                  "Expected '}'\n\nfoo.c:9:16: note: to match this '{'",
-                   "To match this '{'\n\nfoo.c:9:37: error: expected '}'",
-                ]
+                "Non-void function does not return a value",
+                "Use of undeclared identifier 'do_'",
+                "Expected '}'\n\nfoo.c:9:16: note: to match this '{'",
+                "To match this '{'\n\nfoo.c:9:37: error: expected '}'",
+            ]
         elif langserver_name == "gopls":
             assert diag_msgs == ["expected ';', found asdf"]
         else:
@@ -398,7 +395,9 @@ def test_clangd_11(tmp_path):
     check_that_langserver_works("clangd_11", tmp_path)
 
 
-@pytest.mark.xfail(strict=True, reason="gopls needs WorkspaceFolders, not implemented yet")
+@pytest.mark.xfail(
+    strict=True, reason="gopls needs WorkspaceFolders, not implemented yet"
+)
 @pytest.mark.skipif(
     sys.platform == "win32", reason="don't know how go works on windows"
 )
