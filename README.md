@@ -18,7 +18,15 @@ Most tests don't work on Windows,
 but GitHub Actions runs tests of all pull requests and uploads coverage files from them.
 TODO: add instructions for looking at coverage files on Windows
 
-To run tests, first download the langservers you need by reading `.github/workflows/test.yml`.
-Then run the tests:
+To run tests, first download the langservers you need.
+You can mostly read `.github/workflows/test.yml`, but the Go langserver is a bit of a gotcha.
+You will need to install go from https://golang.org/,
+because the one from `sudo apt install golang` is too old.
+Extract it inside `tests/` so that you get a folder named `sansio-lsp-client/tests/go`.
 
-    (env)$ poetry run pytest
+    $ cd tests
+    $ tar xf /blah/blah/Downloads/go1.16.5.linux-amd64.tar.gz
+
+Once you have installed all langservers you want, you can run the tests:
+
+    (env)$ PATH="$PATH:$(pwd)/tests/go/bin" poetry run pytest
