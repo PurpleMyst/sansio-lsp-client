@@ -1,0 +1,24 @@
+name: Lint with pyflakes
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  pyflakes:
+    runs-on: ubuntu-latest
+    name: Pyflakes
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install Dependencies
+      run: |
+        pip install poetry && poetry install
+    - name: Run pyflakes
+      run: |
+        # Skip __init__.py because it contains star imports
+        poetry run python3 -m pyflakes $(git ls-files '*.py' | grep -v __init__.py)
