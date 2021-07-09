@@ -29,8 +29,6 @@ from .events import (
     RegisterCapabilityRequest,
     MDocumentSymbols,
     DocumentFormatting,
-    Progress,
-    WorkDoneProgress,
     WorkDoneProgressCreate,
     WorkDoneProgressBegin,
     WorkDoneProgressReport,
@@ -58,7 +56,6 @@ from .structs import (
     FormattingOptions,
     Range,
     WorkspaceFolder,
-    ProgressToken,
     MWorkDoneProgressKind,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
