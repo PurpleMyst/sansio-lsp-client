@@ -150,8 +150,8 @@ class ThreadedServer:
     #            print(f"Can't autoreply: {type(msg)}")
 
     def wait_for_message_of_type(self, type_, timeout=5):
-        end_time = time.time() + timeout
-        while time.time() < end_time:
+        end_time = time.monotonic() + timeout
+        while time.monotonic() < end_time:
             self._queue_data_to_send()
             self._read_data_received()
 
@@ -493,13 +493,6 @@ def check_that_langserver_works(langserver_name, tmp_path):
             typedef = do_method(METHOD_TYPEDEF)
             assert len(typedef.result) == 1
             assert typedef.result[0].uri == (project_root / filename).as_uri()
-
-
-def _needs_clangd(version):
-    return pytest.mark.skipif(
-        not list(langserver_dir.glob(f"clangd_{version}.*")),
-        reason=f"clangd {version} not found",
-    )
 
 
 def test_pyls(tmp_path):
