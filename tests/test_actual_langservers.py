@@ -137,8 +137,7 @@ class ThreadedServer:
         #                "* unprocessed messages: " + pprint.pformat(self.msgs)
         #            )
 
-        assert self.lsp_client.state != lsp.ClientState.NOT_INITIALIZED
-        assert self.lsp_client.state != lsp.ClientState.WAITING_FOR_INITIALIZED
+        assert self.lsp_client.state == lsp.ClientState.NORMAL
         self.lsp_client.shutdown()
         self.wait_for_message_of_type(lsp.Shutdown)
         self.lsp_client.exit()
