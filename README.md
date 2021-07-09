@@ -25,7 +25,7 @@ because the one from `sudo apt install golang` is too old.
 Extract it inside where you cloned `sansio-lsp-client`
 so that you get an executable named `sansio-lsp-client/go/bin/go`.
 
-    $ tar xf /blah/blah/Downloads/go1.16.5.linux-amd64.tar.gz
+    $ tar xf ~/Downloads/go1.16.5.linux-amd64.tar.gz
 
 Once you have installed all langservers you want, you can run the tests:
 
