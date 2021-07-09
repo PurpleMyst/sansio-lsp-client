@@ -495,13 +495,6 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert typedef.result[0].uri == (project_root / filename).as_uri()
 
 
-def _needs_clangd(version):
-    return pytest.mark.skipif(
-        not list(langserver_dir.glob(f"clangd_{version}.*")),
-        reason=f"clangd {version} not found",
-    )
-
-
 def test_pyls(tmp_path):
     check_that_langserver_works("pyls", tmp_path)
 
