@@ -1,6 +1,5 @@
 import enum
 import typing as t
-import logging
 
 from pydantic import parse_obj_as, ValidationError
 
@@ -59,8 +58,6 @@ from .structs import (
     MWorkDoneProgressKind,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
-
-logger = logging.getLogger(__name__)
 
 
 class ClientState(enum.Enum):
@@ -142,7 +139,6 @@ class Client:
         trace: str = "off",
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
-        self._recv_catches_and_logs_errors = True  # for tests
 
         # Used to save data as it comes in (from `recieve_bytes`) until we have
         # a full request.
@@ -357,24 +353,16 @@ class Client:
 
     def recv(self, data: bytes) -> t.List[Event]:
         self._recv_buf += data
-
-        # _parse_messages deletes consumed data from self._recv_buf
-        messages = list(_parse_messages(self._recv_buf))
-
         events: t.List[Event] = []
-        for message in messages:
-            try:
-                if isinstance(message, Response):
-                    events.append(self._handle_response(message))
-                elif isinstance(message, Request):
-                    events.append(self._handle_request(message))
-                else:
-                    raise RuntimeError("nobody will ever see this, i hope")
-            except Exception as e:
-                if self._recv_catches_and_logs_errors:
-                    logger.exception("Failed to process received message: %s", message)
-                else:
-                    raise e
+
+        # TODO: error handling so that you can get other events even if one event errors
+        for message in _parse_messages(self._recv_buf):
+            if isinstance(message, Response):
+                events.append(self._handle_response(message))
+            elif isinstance(message, Request):
+                events.append(self._handle_request(message))
+            else:
+                raise RuntimeError("nobody will ever see this, i hope")
 
         return events
 

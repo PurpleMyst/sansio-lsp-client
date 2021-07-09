@@ -160,7 +160,7 @@ def _parse_one_message(
         return [parse_request_or_response(content)]
 
 
-def _parse_messages(response_buf: bytearray,) -> t.Iterator[t.Union[Response, Request]]:
+def _parse_messages(response_buf: bytearray) -> t.Iterator[t.Union[Response, Request]]:
     while True:
         parsed = _parse_one_message(response_buf)
         if parsed is None:

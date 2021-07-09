@@ -69,7 +69,6 @@ class ThreadedServer:
             workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")],
             trace="verbose",
         )
-        self.lsp_client._recv_catches_and_logs_errors = False
         self.msgs = []
 
         self._pout = process.stdout
