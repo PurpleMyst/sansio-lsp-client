@@ -351,20 +351,16 @@ class Client:
         else:
             raise NotImplementedError(request)
 
-    def recv(self, data: bytes) -> t.List[Event]:
+    def recv(self, data: bytes) -> t.Iterator[Event]:
         self._recv_buf += data
-        events: t.List[Event] = []
-
-        # TODO: error handling so that you can get other events even if one event errors
+        # Make sure to use lots of iterators, so that if one message fails to
+        # parse, the messages before it are yielded successfully before the
+        # error, and the messages after it are left in _recv_buf.
         for message in _parse_messages(self._recv_buf):
             if isinstance(message, Response):
-                events.append(self._handle_response(message))
-            elif isinstance(message, Request):
-                events.append(self._handle_request(message))
+                yield self._handle_response(message)
             else:
-                raise RuntimeError("nobody will ever see this, i hope")
-
-        return events
+                yield self._handle_request(message)
 
     def send(self) -> bytes:
         send_buf = self._send_buf[:]
