@@ -163,9 +163,6 @@ class Client:
         # it would just litter the code unnecessarily.
         self._id_counter = 0
 
-        # Store type of '$/progress' for parsing
-        self._progress_tokens_map: t.Dict[ProgressToken, t.Type[Progress]] = {}
-
         # We'll just immediately send off an "initialize" request.
         self._send_request(
             method="initialize",
@@ -331,46 +328,32 @@ class Client:
 
         if request.method == "workspace/workspaceFolders":
             return parse_request(WorkspaceFolders)
-
         elif request.method == "workspace/configuration":
             return parse_request(ConfigurationRequest)
-
         elif request.method == "window/showMessage":
             return parse_request(ShowMessage)
         elif request.method == "window/showMessageRequest":
             return parse_request(ShowMessageRequest)
         elif request.method == "window/logMessage":
             return parse_request(LogMessage)
-
         elif request.method == "textDocument/publishDiagnostics":
             return parse_request(PublishDiagnostics)
-
         elif request.method == "window/workDoneProgress/create":
-            assert request.params is not None
-            event = parse_request(WorkDoneProgressCreate)
-            self._progress_tokens_map[request.params["token"]] = WorkDoneProgress
-            return event
+            return parse_request(WorkDoneProgressCreate)
+        elif request.method == "client/registerCapability":
+            return parse_request(RegisterCapabilityRequest)
 
         elif request.method == "$/progress":
             assert request.params is not None
-            progress_type = self._progress_tokens_map.get(request.params["token"])
-
-            if progress_type == WorkDoneProgress:
-                assert request.params is not None
-                kind = MWorkDoneProgressKind(request.params["value"]["kind"])
-
-                if kind == MWorkDoneProgressKind.BEGIN:
-                    return parse_request(WorkDoneProgressBegin)
-                elif kind == MWorkDoneProgressKind.REPORT:
-                    return parse_request(WorkDoneProgressReport)
-                elif kind == MWorkDoneProgressKind.END:
-                    del self._progress_tokens_map[request.params["token"]]
-                    return parse_request(WorkDoneProgressEnd)
-
-            raise NotImplementedError(request)
-
-        elif request.method == "client/registerCapability":
-            return parse_request(RegisterCapabilityRequest)
+            kind = MWorkDoneProgressKind(request.params["value"]["kind"])
+            if kind == MWorkDoneProgressKind.BEGIN:
+                return parse_request(WorkDoneProgressBegin)
+            elif kind == MWorkDoneProgressKind.REPORT:
+                return parse_request(WorkDoneProgressReport)
+            elif kind == MWorkDoneProgressKind.END:
+                return parse_request(WorkDoneProgressEnd)
+            else:
+                raise RuntimeError("this shouldn't happen")
 
         else:
             raise NotImplementedError(request)
