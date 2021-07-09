@@ -15,7 +15,6 @@ from .structs import (
     Range,
     Location,
     MarkedString,
-    ParameterInformation,
     SignatureInformation,
     LocationLink,
     CallHierarchyItem,
