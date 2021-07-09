@@ -135,5 +135,5 @@ tags
 
 # test stuff
 /cov.xml
-tests/langservers/
-tests/go/
+/go/
+/tests/langservers/

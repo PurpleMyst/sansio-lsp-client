@@ -43,23 +43,16 @@ RESPONSE_TYPES = {
 }
 
 
-def get_meth_text_pos(text, method):
+def find_method_marker(text, method):
     """ searches for line: `<code> #<method>-<shift>`
-          - example: `sys.getdefaultencoding() #{METHOD_HOVER}-5`
-            position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng() `
-        returns (x,y)
+          - example: `sys.getdefaultencoding() #{METHOD_COMPLETION}-5`
+            position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng()`
     """
-    meth_mark = "#" + method
-    lines = text.splitlines()
-
-    # line index
-    target_line_ind = next(i for i, line in enumerate(lines) if meth_mark in line)
-    # char index
-    mark_character_ind = lines[target_line_ind].index(meth_mark)
-    m = re.search(f"\\#{method}-(\\d+)", text)
-    target_character_ind = mark_character_ind - int(m.group(1))
-
-    return (target_character_ind, target_line_ind)
+    match = re.search(rf"\#{method}-(\d+)", text)
+    before_match = text[: match.start()]
+    lineno = before_match.count("\n")
+    column = len(before_match.split("\n")[-1]) - int(match.group(1))
+    return lsp.Position(line=lineno, character=column)
 
 
 class ThreadedServer:
@@ -184,7 +177,7 @@ class ThreadedServer:
         #                "* unprocessed messages: " + pprint.pformat(self.msgs)
         #            )
 
-        assert self.lsp_client.is_initialized
+        assert self.lsp_client.state == lsp.ClientState.NORMAL
         self.lsp_client.shutdown()
         self.wait_for_message_of_type(lsp.Shutdown)
         self.lsp_client.exit()
@@ -193,10 +186,9 @@ class ThreadedServer:
 
     def do_method(self, text, file_uri, method, response_type=None):
         def doc_pos():
-            x, y = get_meth_text_pos(text=text, method=method)
             return lsp.TextDocumentPosition(
                 textDocument=lsp.TextDocumentIdentifier(uri=file_uri),
-                position=lsp.Position(line=y, character=x),
+                position=find_method_marker(text, method),
             )
 
         if not response_type:

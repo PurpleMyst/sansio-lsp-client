@@ -1,5 +1,4 @@
-# mostly copied from mypy.yml
-name: Black
+name: Lint with pyflakes
 
 on:
   push:
@@ -8,9 +7,9 @@ on:
   pull_request:
 
 jobs:
-  build:
+  pyflakes:
     runs-on: ubuntu-latest
-    name: Black
+    name: Pyflakes
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
@@ -19,6 +18,7 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install poetry && poetry install
-    - name: black
+    - name: Run pyflakes
       run: |
-        poetry run python3 -m black --check sansio_lsp_client tests
+        # Skip __init__.py because it contains star imports
+        poetry run python3 -m pyflakes $(git ls-files '*.py' | grep -v __init__.py)
