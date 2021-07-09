@@ -9,7 +9,6 @@ from .structs import (
     Diagnostic,
     MessageType,
     MessageActionItem,
-    CompletionItem,
     CompletionList,
     TextEdit,
 )
