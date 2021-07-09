@@ -1,6 +1,12 @@
 # https://medium.com/@doedotdev/mypy-for-github-action-7da1ebee99e7
 name: Mypy
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -1,6 +1,12 @@
 # mostly copied from mypy.yml
 name: Black
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
 jobs:
   build:
     runs-on: ubuntu-latest
