@@ -110,8 +110,8 @@ class ThreadedServer:
             msg.reply()
 
     def wait_for_message_of_type(self, type_, timeout=5):
-        end_time = time.time() + timeout
-        while time.time() < end_time:
+        end_time = time.monotonic() + timeout
+        while time.monotonic() < end_time:
             self._queue_data_to_send()
             self._read_data_received()
 
