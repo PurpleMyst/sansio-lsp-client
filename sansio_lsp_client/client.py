@@ -374,6 +374,7 @@ class Client:
 
     def exit(self) -> None:
         assert self._state == ClientState.SHUTDOWN
+        # TODO: figure out why params={} is needed
         self._send_notification(method="exit", params={})
         self._state = ClientState.EXITED
 
