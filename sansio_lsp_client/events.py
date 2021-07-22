@@ -135,10 +135,7 @@ class PublishDiagnostics(ServerNotification):
 class Hover(Event):
     message_id: t.Optional[Id]  # custom...
     contents: t.Union[
-        t.List[t.Union[MarkedString, str]],
-        MarkedString,  # .language, .value
-        MarkupContent,  # kind: MarkupKind, value: str
-        str,
+        t.List[t.Union[MarkedString, str]], MarkedString, MarkupContent, str
     ]
     range: t.Optional[Range]
 

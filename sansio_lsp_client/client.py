@@ -472,41 +472,25 @@ class Client:
             method="textDocument/signatureHelp", params=text_document_position.dict()
         )
 
-    def definition(
-        self,
-        text_document_position: TextDocumentPosition,
-        # TODO PartialResultParams
-    ) -> int:
+    def definition(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/definition", params=text_document_position.dict()
         )
 
-    def declaration(
-        self,
-        text_document_position: TextDocumentPosition,
-        # TODO PartialResultParams
-    ) -> int:
+    def declaration(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/declaration", params=text_document_position.dict()
         )
 
-    def typeDefinition(
-        self,
-        text_document_position: TextDocumentPosition,
-        # TODO PartialResultParams
-    ) -> int:
+    def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/typeDefinition", params=text_document_position.dict()
         )
 
-    def references(
-        self,
-        text_document_position: TextDocumentPosition,
-        # TODO PartialResultParams
-    ) -> int:
+    def references(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         params = {
             "context": {"includeDeclaration": True},
@@ -522,21 +506,13 @@ class Client:
             params=text_document_position.dict(),
         )
 
-    def implementation(
-        self,
-        text_document_position: TextDocumentPosition,
-        # TODO PartialResultParams
-    ) -> int:
+    def implementation(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/implementation", params=text_document_position.dict()
         )
 
-    def workspace_symbol(
-        self,
-        query: str = "",
-        # TODO PartialResultParams
-    ) -> int:
+    def workspace_symbol(self, query: str = "") -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(method="workspace/symbol", params={"query": query})
 
