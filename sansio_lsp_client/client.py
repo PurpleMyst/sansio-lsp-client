@@ -1,10 +1,10 @@
 import enum
-import pprint
 import typing as t
 
 from pydantic import parse_obj_as, ValidationError
 
 from .events import (
+    ResponseError,
     Initialized,
     Completion,
     ServerRequest,
@@ -16,12 +16,31 @@ from .events import (
     WillSaveWaitUntilEdits,
     ShowMessageRequest,
     LogMessage,
+    Hover,
+    SignatureHelp,
+    Definition,
+    References,
+    MCallHierarchItems,
+    Implementation,
+    MWorkspaceSymbols,
+    Declaration,
+    TypeDefinition,
+    RegisterCapabilityRequest,
+    MDocumentSymbols,
+    DocumentFormatting,
+    WorkDoneProgressCreate,
+    WorkDoneProgressBegin,
+    WorkDoneProgressReport,
+    WorkDoneProgressEnd,
+    ConfigurationRequest,
+    WorkspaceFolders,
 )
 from .structs import (
     Response,
     TextDocumentPosition,
     CompletionContext,
     CompletionList,
+    CompletionItemKind,
     CompletionItem,
     Request,
     JSONDict,
@@ -32,6 +51,11 @@ from .structs import (
     TextDocumentSaveReason,
     TextEdit,
     Id,
+    SymbolKind,
+    FormattingOptions,
+    Range,
+    WorkspaceFolder,
+    MWorkDoneProgressKind,
 )
 from .io_handler import _make_request, _parse_messages, _make_response
 
@@ -45,12 +69,73 @@ class ClientState(enum.Enum):
     EXITED = enum.auto()
 
 
+CAPABILITIES = {
+    "textDocument": {
+        "synchronization": {
+            "didSave": True,
+            #'willSaveWaitUntil': True,
+            "dynamicRegistration": True,
+            #'willSave': True
+        },
+        "publishDiagnostics": {"relatedInformation": True},
+        "completion": {
+            "dynamicRegistration": True,
+            "completionItem": {"snippetSupport": False},
+            "completionItemKind": {"valueSet": list(CompletionItemKind)},
+        },
+        "hover": {
+            "dynamicRegistration": True,
+            "contentFormat": ["markdown", "plaintext"],
+        },
+        "definition": {"dynamicRegistration": True, "linkSupport": True},
+        "signatureHelp": {
+            "dynamicRegistration": True,
+            "signatureInformation": {
+                "parameterInformation": {
+                    "labelOffsetSupport": False  # substring from label
+                },
+                "documentationFormat": ["markdown", "plaintext"],
+            },
+        },
+        "implementation": {"linkSupport": True, "dynamicRegistration": True},
+        "references": {"dynamicRegistration": True},
+        "callHierarchy": {"dynamicRegistration": True},
+        "declaration": {"linkSupport": True, "dynamicRegistration": True},
+        "typeDefinition": {"linkSupport": True, "dynamicRegistration": True},
+        "formatting": {"dynamicRegistration": True},
+        "rangeFormatting": {"dynamicRegistration": True},
+        "documentSymbol": {
+            "hierarchicalDocumentSymbolSupport": True,
+            "dynamicRegistration": True,
+            "symbolKind": {"valueSet": list(SymbolKind)},
+        },
+    },
+    "window": {
+        "showMessage": {
+            # TODO 'messageActionItem':...
+        },
+        "workDoneProgress": True,
+    },
+    "workspace": {
+        "symbol": {
+            "dynamicRegistration": True,
+            "symbolKind": {"valueSet": list(SymbolKind)},
+        },
+        "workspaceFolders": True,
+        # TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
+        "configuration": True,
+        "didChangeConfiguration": {"dynamicRegistration": True},
+    },
+}
+
+
 class Client:
     # TODO: Save the encoding given here.
     def __init__(
         self,
         process_id: t.Optional[int] = None,
         root_uri: t.Optional[str] = None,
+        workspace_folders: t.Optional[t.List[WorkspaceFolder]] = None,
         trace: str = "off",
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
@@ -77,8 +162,13 @@ class Client:
             params={
                 "processId": process_id,
                 "rootUri": root_uri,
-                "capabilities": {},
+                "workspaceFolders": (
+                    None
+                    if workspace_folders is None
+                    else [f.dict() for f in workspace_folders]
+                ),
                 "trace": trace,
+                "capabilities": CAPABILITIES,
             },
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
@@ -86,6 +176,13 @@ class Client:
     @property
     def state(self) -> ClientState:
         return self._state
+
+    @property
+    def is_initialized(self) -> bool:
+        return (
+            self._state != ClientState.NOT_INITIALIZED
+            and self._state != ClientState.WAITING_FOR_INITIALIZED
+        )
 
     def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
         id = self._id_counter
@@ -108,19 +205,23 @@ class Client:
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)
 
+    # response from server
     def _handle_response(self, response: Response) -> Event:
         assert response.id is not None
         request = self._unanswered_requests.pop(response.id)
 
-        # FIXME: The errors have meanings.
         if response.error is not None:
-            raise RuntimeError("Response error!\n\n" + pprint.pformat(response.error))
+            err = ResponseError.parse_obj(response.error)
+            err.message_id = response.id
+            return err
 
         event: Event
 
         if request.method == "initialize":
             assert self._state == ClientState.WAITING_FOR_INITIALIZED
-            self._send_notification("initialized")
+            self._send_notification(
+                "initialized", params={}
+            )  # params=None doesn't work with gopls
             event = Initialized.parse_obj(response.result)
             self._state = ClientState.NORMAL
 
@@ -150,11 +251,58 @@ class Client:
                 edits=parse_obj_as(t.List[TextEdit], response.result)
             )
 
+        elif request.method == "textDocument/hover":
+            if response.result is not None:
+                event = Hover.parse_obj(response.result)
+            else:
+                event = Hover(contents=[])  # null response
+            event.message_id = response.id
+
+        elif request.method == "textDocument/signatureHelp":
+            if response.result is not None:
+                event = SignatureHelp.parse_obj(response.result)
+            else:
+                event = SignatureHelp(signatures=[])  # null response
+            event.message_id = response.id
+
+        elif request.method == "textDocument/documentSymbol":
+            event = parse_obj_as(MDocumentSymbols, response)
+            event.message_id = response.id
+
+        # GOTOs
+        elif request.method == "textDocument/definition":
+            event = parse_obj_as(Definition, response)
+            event.message_id = response.id
+
+        elif request.method == "textDocument/references":
+            event = parse_obj_as(References, response)
+        elif request.method == "textDocument/implementation":
+            event = parse_obj_as(Implementation, response)
+        elif request.method == "textDocument/declaration":
+            event = parse_obj_as(Declaration, response)
+        elif request.method == "textDocument/typeDefinition":
+            event = parse_obj_as(TypeDefinition, response)
+
+        elif request.method == "textDocument/prepareCallHierarchy":
+            event = parse_obj_as(MCallHierarchItems, response)
+
+        elif (
+            request.method == "textDocument/formatting"
+            or request.method == "textDocument/rangeFormatting"
+        ):
+            event = parse_obj_as(DocumentFormatting, response)
+            event.message_id = response.id
+
+        # WORKSPACE
+        elif request.method == "workspace/symbol":
+            event = parse_obj_as(MWorkspaceSymbols, response)
+
         else:
             raise NotImplementedError((response, request))
 
         return event
 
+    # request from server
     def _handle_request(self, request: Request) -> Event:
         def parse_request(event_cls: t.Type[Event]) -> Event:
             if issubclass(event_cls, ServerRequest):
@@ -171,7 +319,11 @@ class Client:
                     " or ServerNotification"
                 )
 
-        if request.method == "window/showMessage":
+        if request.method == "workspace/workspaceFolders":
+            return parse_request(WorkspaceFolders)
+        elif request.method == "workspace/configuration":
+            return parse_request(ConfigurationRequest)
+        elif request.method == "window/showMessage":
             return parse_request(ShowMessage)
         elif request.method == "window/showMessageRequest":
             return parse_request(ShowMessageRequest)
@@ -179,25 +331,36 @@ class Client:
             return parse_request(LogMessage)
         elif request.method == "textDocument/publishDiagnostics":
             return parse_request(PublishDiagnostics)
+        elif request.method == "window/workDoneProgress/create":
+            return parse_request(WorkDoneProgressCreate)
+        elif request.method == "client/registerCapability":
+            return parse_request(RegisterCapabilityRequest)
+
+        elif request.method == "$/progress":
+            assert request.params is not None
+            kind = MWorkDoneProgressKind(request.params["value"]["kind"])
+            if kind == MWorkDoneProgressKind.BEGIN:
+                return parse_request(WorkDoneProgressBegin)
+            elif kind == MWorkDoneProgressKind.REPORT:
+                return parse_request(WorkDoneProgressReport)
+            elif kind == MWorkDoneProgressKind.END:
+                return parse_request(WorkDoneProgressEnd)
+            else:
+                raise RuntimeError("this shouldn't happen")
+
         else:
             raise NotImplementedError(request)
 
-    def recv(self, data: bytes) -> t.List[Event]:
+    def recv(self, data: bytes) -> t.Iterator[Event]:
         self._recv_buf += data
-
-        # _parse_messages deletes consumed data from self._recv_buf
-        messages = list(_parse_messages(self._recv_buf))
-
-        events: t.List[Event] = []
-        for message in messages:
+        # Make sure to use lots of iterators, so that if one message fails to
+        # parse, the messages before it are yielded successfully before the
+        # error, and the messages after it are left in _recv_buf.
+        for message in _parse_messages(self._recv_buf):
             if isinstance(message, Response):
-                events.append(self._handle_response(message))
-            elif isinstance(message, Request):
-                events.append(self._handle_request(message))
+                yield self._handle_response(message)
             else:
-                raise RuntimeError("nobody will ever see this, i hope")
-
-        return events
+                yield self._handle_request(message)
 
     def send(self) -> bytes:
         send_buf = self._send_buf[:]
@@ -211,7 +374,8 @@ class Client:
 
     def exit(self) -> None:
         assert self._state == ClientState.SHUTDOWN
-        self._send_notification(method="exit")
+        # TODO: figure out why params={} is needed
+        self._send_notification(method="exit", params={})
         self._state = ClientState.EXITED
 
     def cancel_last_request(self) -> None:
@@ -231,7 +395,6 @@ class Client:
         content_changes: t.List[TextDocumentContentChangeEvent],
     ) -> None:
         assert self._state == ClientState.NORMAL
-
         self._send_notification(
             method="textDocument/didChange",
             params={
@@ -274,7 +437,19 @@ class Client:
             params={"textDocument": text_document.dict()},
         )
 
-    def completions(
+    def did_change_workspace_folders(
+        self, added: t.List[WorkspaceFolder], removed: t.List[WorkspaceFolder]
+    ) -> None:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "added": [f.dict() for f in added],
+            "removed": [f.dict() for f in removed],
+        }
+        self._send_notification(
+            method="workspace/didChangeWorkspaceFolders", params=params
+        )
+
+    def completion(
         self,
         text_document_position: TextDocumentPosition,
         context: t.Optional[CompletionContext] = None,
@@ -285,3 +460,87 @@ class Client:
         if context is not None:
             params.update(context.dict())
         return self._send_request(method="textDocument/completion", params=params)
+
+    def hover(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/hover", params=text_document_position.dict()
+        )
+
+    def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/signatureHelp", params=text_document_position.dict()
+        )
+
+    def definition(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/definition", params=text_document_position.dict()
+        )
+
+    def declaration(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/declaration", params=text_document_position.dict()
+        )
+
+    def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/typeDefinition", params=text_document_position.dict()
+        )
+
+    def references(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "context": {"includeDeclaration": True},
+            **text_document_position.dict(),
+        }
+        return self._send_request(method="textDocument/references", params=params)
+
+    # TODO incomplete
+    def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/prepareCallHierarchy",
+            params=text_document_position.dict(),
+        )
+
+    def implementation(self, text_document_position: TextDocumentPosition) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/implementation", params=text_document_position.dict()
+        )
+
+    def workspace_symbol(self, query: str = "") -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(method="workspace/symbol", params={"query": query})
+
+    def documentSymbol(self, text_document: TextDocumentIdentifier) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/documentSymbol",
+            params={"textDocument": text_document.dict()},
+        )
+
+    def formatting(
+        self, text_document: TextDocumentIdentifier, options: FormattingOptions
+    ) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {"textDocument": text_document.dict(), "options": options.dict()}
+        return self._send_request(method="textDocument/formatting", params=params)
+
+    def rangeFormatting(
+        self,
+        text_document: TextDocumentIdentifier,
+        range: Range,
+        options: FormattingOptions,
+    ) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {
+            "textDocument": text_document.dict(),
+            "range": range.dict(),
+            "options": options.dict(),
+        }
+        return self._send_request(method="textDocument/rangeFormatting", params=params)

@@ -16,9 +16,31 @@ import pytest
 import sansio_lsp_client as lsp
 
 
-# TODO: More stuff coming from halfbrained pull requests
 METHOD_COMPLETION = "completion"
-RESPONSE_TYPES = {METHOD_COMPLETION: lsp.Completion}
+METHOD_HOVER = "hover"
+METHOD_SIG_HELP = "signatureHelp"
+METHOD_DEFINITION = "definition"
+METHOD_REFERENCES = "references"
+METHOD_IMPLEMENTATION = "implementation"
+METHOD_DECLARATION = "declaration"
+METHOD_TYPEDEF = "typeDefinition"
+METHOD_DOC_SYMBOLS = "documentSymbol"
+METHOD_FORMAT_DOC = "formatting"
+METHOD_FORMAT_SEL = "rangeFormatting"
+
+RESPONSE_TYPES = {
+    METHOD_COMPLETION: lsp.Completion,
+    METHOD_HOVER: lsp.Hover,
+    METHOD_SIG_HELP: lsp.SignatureHelp,
+    METHOD_DEFINITION: lsp.Definition,
+    METHOD_REFERENCES: lsp.References,
+    METHOD_IMPLEMENTATION: lsp.Implementation,
+    METHOD_DECLARATION: lsp.Declaration,
+    METHOD_TYPEDEF: lsp.TypeDefinition,
+    METHOD_DOC_SYMBOLS: lsp.MDocumentSymbols,
+    METHOD_FORMAT_DOC: lsp.DocumentFormatting,
+    METHOD_FORMAT_SEL: lsp.DocumentFormatting,
+}
 
 
 def find_method_marker(text, method):
@@ -42,8 +64,11 @@ class ThreadedServer:
     def __init__(self, process, root_uri):
         self.process = process
         self.root_uri = root_uri
-        self.lsp_client = lsp.Client(root_uri=root_uri, trace="verbose")
-        self.lsp_client._recv_catches_and_logs_errors = False
+        self.lsp_client = lsp.Client(
+            root_uri=root_uri,
+            workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")],
+            trace="verbose",
+        )
         self.msgs = []
 
         self._pout = process.stdout
@@ -106,8 +131,22 @@ class ThreadedServer:
                 self._try_default_reply(ev)
 
     def _try_default_reply(self, msg):
-        if isinstance(msg, lsp.ShowMessageRequest):
+        if isinstance(
+            msg,
+            (
+                lsp.ShowMessageRequest,
+                lsp.WorkDoneProgressCreate,
+                lsp.RegisterCapabilityRequest,
+                lsp.ConfigurationRequest,
+            ),
+        ):
             msg.reply()
+
+        elif isinstance(msg, lsp.WorkspaceFolders):
+            msg.reply([lsp.WorkspaceFolder(uri=self.root_uri, name="Root")])
+
+    #        else:
+    #            print(f"Can't autoreply: {type(msg)}")
 
     def wait_for_message_of_type(self, type_, timeout=5):
         end_time = time.monotonic() + timeout
@@ -131,8 +170,8 @@ class ThreadedServer:
         )
 
     def exit_cleanly(self):
+        # Not necessarily error, gopls sends logging messages for example
         #        if self.msgs:
-        #            # Not necessarily error, gopls sends logging messages for example
         #            print(
         #                "* unprocessed messages: " + pprint.pformat(self.msgs)
         #            )
@@ -155,12 +194,29 @@ class ThreadedServer:
             response_type = RESPONSE_TYPES[method]
 
         if method == METHOD_COMPLETION:
-            event_id = self.lsp_client.completions(
+            event_id = self.lsp_client.completion(
                 text_document_position=doc_pos(),
                 context=lsp.CompletionContext(
                     triggerKind=lsp.CompletionTriggerKind.INVOKED
                 ),
             )
+        elif method == METHOD_HOVER:
+            event_id = self.lsp_client.hover(text_document_position=doc_pos())
+        elif method == METHOD_SIG_HELP:
+            event_id = self.lsp_client.signatureHelp(text_document_position=doc_pos())
+        elif method == METHOD_DEFINITION:
+            event_id = self.lsp_client.definition(text_document_position=doc_pos())
+        elif method == METHOD_REFERENCES:
+            event_id = self.lsp_client.references(text_document_position=doc_pos())
+        elif method == METHOD_IMPLEMENTATION:
+            event_id = self.lsp_client.implementation(text_document_position=doc_pos())
+        elif method == METHOD_DECLARATION:
+            event_id = self.lsp_client.declaration(text_document_position=doc_pos())
+        elif method == METHOD_TYPEDEF:
+            event_id = self.lsp_client.typeDefinition(text_document_position=doc_pos())
+        elif method == METHOD_DOC_SYMBOLS:
+            _docid = lsp.TextDocumentIdentifier(uri=file_uri)
+            event_id = self.lsp_client.documentSymbol(text_document=_docid)
         else:
             raise NotImplementedError(method)
 
@@ -211,10 +267,10 @@ def check_that_langserver_works(langserver_name, tmp_path):
             "foo.py": textwrap.dedent(
                 f"""\
                 import sys
-                def do_foo():
-                    sys.getdefaultencoding()
-                def do_bar():
-                    sys.intern("hey")
+                def do_foo(): #{METHOD_DEFINITION}-5
+                    sys.getdefaultencoding() #{METHOD_HOVER}-5
+                def do_bar(): #{METHOD_REFERENCES}-5
+                    sys.intern("hey") #{METHOD_SIG_HELP}-2
 
                 do_ #{METHOD_COMPLETION}-1"""
             )
@@ -243,7 +299,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
                 f"""\
                 #include <stdio.h>
                 void do_foo(void);
-                void do_foo(void) {{
+                void do_foo(void) {{//#{METHOD_DECLARATION}-13
                 }}
                 int do_bar(char x, long y) {{
                     short z = x + y;
@@ -272,9 +328,9 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
                 func doSomethingWithFoo(x, y) string {{
                     blah := x + y
-                    cat := &Creature{{"cat"}}
-                    cat := &Creature{{"cat"}}
-                    cat.Dump()
+                    cat := &Creature{{"cat"}} //#{METHOD_TYPEDEF}-18
+                    cat := &Creature{{"cat"}} //#{METHOD_IMPLEMENTATION}-14
+                    cat.Dump() //#{METHOD_IMPLEMENTATION}-7
                     return asdf asdf
                 }}
                 var s1 = doS //#{METHOD_COMPLETION}-3"""
@@ -322,8 +378,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert diag_msgs == [
                 "Non-void function does not return a value",
                 "Use of undeclared identifier 'do_'",
-                "Expected '}'\n\nfoo.c:9:16: note: to match this '{'",
-                "To match this '{'\n\nfoo.c:9:37: error: expected '}'",
+                "Expected '}'",
             ]
         elif langserver_name == "gopls":
             assert diag_msgs == ["expected ';', found asdf"]
@@ -336,6 +391,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             (project_root / filename).as_uri(),
         )
 
+        # Completions #####
         completions = do_method(METHOD_COMPLETION)
         completion_labels = [item.label for item in completions.completion_list.items]
 
@@ -348,6 +404,94 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert " do_bar(char x, long y)" in completion_labels
         else:
             raise ValueError(langserver_name)
+
+        if langserver_name == "pyls":
+            # Hover #####
+            hover = do_method(METHOD_HOVER)
+            # NOTE: crude because response changes from one Python version to another
+            assert "getdefaultencoding() -> str" in str(hover.contents)
+
+            # signatureHelp #####
+            sighelp = do_method(METHOD_SIG_HELP)
+
+            assert len(sighelp.signatures) > 0
+            active_sig = sighelp.signatures[sighelp.activeSignature]
+            assert isinstance(active_sig, lsp.SignatureInformation)
+            assert len(active_sig.parameters) > 0
+            assert isinstance(active_sig.parameters[0], lsp.ParameterInformation)
+
+            # definition #####
+            definitions = do_method(METHOD_DEFINITION)
+
+            assert (
+                isinstance(definitions.result, lsp.Location)
+                or len(definitions.result) == 1
+            )
+            item = (
+                definitions.result[0]
+                if isinstance(definitions.result, list)
+                else definitions.result
+            )
+            assert isinstance(item, lsp.Location)  # TODO: could also be LocationLink
+            assert item.uri == (project_root / filename).as_uri()
+            assert (
+                METHOD_DEFINITION
+                in file_contents["foo.py"].splitlines()[item.range.start.line]
+            )
+
+            # references #####
+            [item] = do_method(METHOD_REFERENCES).result
+            assert isinstance(item, lsp.Location)
+            assert item.uri == (project_root / filename).as_uri()
+            assert (
+                METHOD_REFERENCES
+                in file_contents["foo.py"].splitlines()[item.range.start.line]
+            )
+
+            # documentSymbol #####
+            doc_symbols = do_method(METHOD_DOC_SYMBOLS)
+            assert len(doc_symbols.result) == 3
+            assert {s.name for s in doc_symbols.result} == {"sys", "do_foo", "do_bar"}
+
+            # formatting #####
+            tserver.lsp_client.formatting(
+                text_document=lsp.TextDocumentIdentifier(
+                    uri=(project_root / filename).as_uri()
+                ),
+                options=lsp.FormattingOptions(tabSize=4, insertSpaces=True),
+            )
+            formatting = tserver.wait_for_message_of_type(
+                RESPONSE_TYPES[METHOD_FORMAT_DOC]
+            )
+            assert formatting.result
+
+            # Error -- method not supported by server #####
+            # This creates a scary exception in pytest output. That's expected.
+            tserver.lsp_client.workspace_symbol()
+            err = tserver.wait_for_message_of_type(lsp.ResponseError)
+            assert err.message == "Method Not Found: workspace/symbol"
+
+        if langserver_name in ("clangd_10", "clangd_11"):
+            # workspace/symbol #####
+            # TODO - empty for some reason
+            # tserver.lsp_client.workspace_symbol()
+            # w_symb = tserver.wait_for_message_of_type(lsp.MWorkspaceSymbols)
+
+            # declaration #####
+            declaration = do_method(METHOD_DECLARATION)
+            assert len(declaration.result) == 1
+            assert declaration.result[0].uri == (project_root / filename).as_uri()
+
+        if langserver_name == "gopls":
+            # implementation #####
+            # TODO - null result for some reason
+            # implementation = do_method(METHOD_IMPLEMENTATION)
+            # print(f' implementation: {implementation}')
+
+            # typeDefinition #####
+            typedef = do_method(METHOD_TYPEDEF)
+            assert len(typedef.result) == 1
+            assert typedef.result[0].uri == (project_root / filename).as_uri()
 
 
 def test_pyls(tmp_path):
@@ -379,9 +523,6 @@ def test_clangd_11(tmp_path):
     check_that_langserver_works("clangd_11", tmp_path)
 
 
-@pytest.mark.xfail(
-    strict=True, reason="gopls needs WorkspaceFolders, not implemented yet"
-)
 @pytest.mark.skipif(
     sys.platform == "win32", reason="don't know how go works on windows"
 )
