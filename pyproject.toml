@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "sansio-lsp-client"
-version = "0.9.0"
+version = "0.10.0"
 description = """
 An implementation of the client side of the LSP protocol, useful for \
 embedding easily in your editor.\
