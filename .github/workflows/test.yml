@@ -23,7 +23,7 @@ jobs:
       - run: |
           mkdir tests/langservers
       - run: |
-          cd tests/langservers && npm install javascript-typescript-langserver
+          cd tests/langservers && npm install javascript-typescript-langserver pyright
       - shell: bash
         run: |
           cd tests/langservers
