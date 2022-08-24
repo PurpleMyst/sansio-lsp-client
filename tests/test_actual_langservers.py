@@ -578,7 +578,7 @@ def test_pylsp(tmp_path):
 
 @pytest.mark.skipif(
     not (langserver_dir / "node_modules/.bin/pyright-langserver").exists(),
-    reason="pyright-langserver not found in $PATH",
+    reason="pyright-langserver not found in node_modules",
 )
 def test_pyright(tmp_path):
     check_that_langserver_works("pyright", tmp_path)
