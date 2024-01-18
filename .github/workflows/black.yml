@@ -21,4 +21,4 @@ jobs:
         pip install poetry && poetry install
     - name: black
       run: |
-        poetry run python3 -m black --check sansio_lsp_client tests
+        poetry run python3 -m black --check tarts tests

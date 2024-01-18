@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-import sansio_lsp_client as lsp
+import tarts as lsp
 
 
 METHOD_COMPLETION = "completion"
@@ -518,26 +518,14 @@ def test_pylsp(tmp_path):
 def test_javascript_typescript_langserver(tmp_path):
     check_that_langserver_works("js", tmp_path)
 
-
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="don't know how clangd works on windows"
-)
 @pytest.mark.skipif(_clangd_10 is None, reason="clangd 10 not found")
 def test_clangd_10(tmp_path):
     check_that_langserver_works("clangd_10", tmp_path)
 
-
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="don't know how clangd works on windows"
-)
 @pytest.mark.skipif(_clangd_11 is None, reason="clangd 11 not found")
 def test_clangd_11(tmp_path):
     check_that_langserver_works("clangd_11", tmp_path)
 
-
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="don't know how go works on windows"
-)
 @pytest.mark.skipif(
     not (langserver_dir / "bin" / "gopls").exists(),
     reason="gopls not installed in tests/langservers/bin/gopls",

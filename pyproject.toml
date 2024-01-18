@@ -3,18 +3,21 @@ requires = ["poetry"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry]
-name = "sansio-lsp-client"
-version = "0.10.0"
+name = "tarts"
+version = "0.11.0"
 description = """
-An implementation of the client side of the LSP protocol, useful for \
-embedding easily in your editor.\
+Client library for managing language server requests & responses.
 """
-authors = ["Purple Myst <PurpleMyst@users.noreply.github.com>"]
+authors = [
+    "Billy <billyeatcookies@users.noreply.github.com>", 
+    "Purple Myst <PurpleMyst@users.noreply.github.com>",
+]
+maintainers = ["Billy <billyeatcookies@users.noreply.github.com>",]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/PurpleMyst/sansio-lsp-client"
-keywords = ["sansio", "languageserver"]
-include = ["sansio_lsp_client/py.typed"]
+repository = "https://github.com/billyeatcookies/tarts"
+keywords = ["tarts", "languageserver"]
+include = ["tarts/py.typed"]
 
 [tool.poetry.dependencies]
 python = ">=3.6"
