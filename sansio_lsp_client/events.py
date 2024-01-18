@@ -11,6 +11,7 @@ from .structs import (
     MessageActionItem,
     CompletionList,
     TextEdit,
+    TextDocumentEdit,
     MarkupContent,
     Range,
     Location,
@@ -158,6 +159,10 @@ class Definition(Event):
     message_id: t.Optional[Id]
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
 
+class WorkspaceEdit(Event):
+    message_id: t.Optional[Id]
+    changes: t.Optional[t.Dict[str, TextEdit]]
+    documentChanges: t.Optional[t.List[TextDocumentEdit]]
 
 # result is a list, so putting in a custom class
 class References(Event):
@@ -195,11 +200,9 @@ class RegisterCapabilityRequest(ServerRequest):
     def reply(self) -> None:
         self._client._send_response(id=self._id, result={})
 
-
 class DocumentFormatting(Event):
     message_id: t.Optional[Id]
     result: t.Union[t.List[TextEdit], None]
-
 
 class WorkspaceFolders(ServerRequest):
     result: t.Optional[t.List[WorkspaceFolder]]

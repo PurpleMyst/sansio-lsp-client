@@ -33,6 +33,7 @@ from .events import (
     WorkDoneProgressReport,
     WorkDoneProgressEnd,
     ConfigurationRequest,
+    WorkspaceEdit,
     WorkspaceFolders,
 )
 from .structs import (
@@ -104,6 +105,7 @@ CAPABILITIES = {
         "typeDefinition": {"linkSupport": True, "dynamicRegistration": True},
         "formatting": {"dynamicRegistration": True},
         "rangeFormatting": {"dynamicRegistration": True},
+        "rename": {"dynamicRegistration": True},
         "documentSymbol": {
             "hierarchicalDocumentSymbolSupport": True,
             "dynamicRegistration": True,
@@ -116,7 +118,7 @@ CAPABILITIES = {
         },
         "workDoneProgress": True,
     },
-    "workspace": {
+"workspace": {
         "symbol": {
             "dynamicRegistration": True,
             "symbolKind": {"valueSet": list(SymbolKind)},
@@ -125,7 +127,7 @@ CAPABILITIES = {
         # TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
         "configuration": True,
         "didChangeConfiguration": {"dynamicRegistration": True},
-    },
+    },    
 }
 
 
@@ -267,6 +269,10 @@ class Client:
 
         elif request.method == "textDocument/documentSymbol":
             event = parse_obj_as(MDocumentSymbols, response)
+            event.message_id = response.id
+        
+        elif request.method == "textDocument/rename":
+            event = parse_obj_as(WorkspaceEdit, response.result)
             event.message_id = response.id
 
         # GOTOs
@@ -460,6 +466,16 @@ class Client:
         if context is not None:
             params.update(context.dict())
         return self._send_request(method="textDocument/completion", params=params)
+
+    def rename(self, 
+               text_document_position: TextDocumentPosition,
+               new_name: str,
+               ) -> int:
+        assert self._state == ClientState.NORMAL
+        params = {}
+        params.update(text_document_position.dict())
+        params["newName"] = new_name
+        return self._send_request(method="textDocument/rename", params=params)
 
     def hover(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL

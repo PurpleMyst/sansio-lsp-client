@@ -50,6 +50,9 @@ class TextDocumentIdentifier(BaseModel):
     uri: str
 
 
+class OptionalVersionedTextDocumentIdentifier(TextDocumentIdentifier):
+    version: t.Optional[int]
+
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
     version: t.Optional[int]
 
@@ -162,7 +165,11 @@ class MarkupContent(BaseModel):
 class TextEdit(BaseModel):
     range: Range
     newText: str
+    annotationId: t.Optional[str]
 
+class TextDocumentEdit(BaseModel):
+    textDocument: OptionalVersionedTextDocumentIdentifier
+    edits: t.List[TextEdit]
 
 class Command(BaseModel):
     title: str
