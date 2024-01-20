@@ -4,6 +4,7 @@ import typing as t
 from pydantic import parse_obj_as, ValidationError
 
 from .events import (
+    MFoldingRanges,
     ResponseError,
     Initialized,
     Completion,
@@ -87,6 +88,9 @@ CAPABILITIES = {
         "hover": {
             "dynamicRegistration": True,
             "contentFormat": ["markdown", "plaintext"],
+        },
+        "foldingRange": {
+            "dynamicRegistration": True,
         },
         "definition": {"dynamicRegistration": True, "linkSupport": True},
         "signatureHelp": {
@@ -219,92 +223,94 @@ class Client:
 
         event: Event
 
-        if request.method == "initialize":
-            assert self._state == ClientState.WAITING_FOR_INITIALIZED
-            self._send_notification(
-                "initialized", params={}
-            )  # params=None doesn't work with gopls
-            event = Initialized.parse_obj(response.result)
-            self._state = ClientState.NORMAL
+        match request.method:
+            case "initialize":
+                assert self._state == ClientState.WAITING_FOR_INITIALIZED
+                self._send_notification(
+                    "initialized", params={}
+                )  # params=None doesn't work with gopls
+                event = Initialized.parse_obj(response.result)
+                self._state = ClientState.NORMAL
 
-        elif request.method == "shutdown":
-            assert self._state == ClientState.WAITING_FOR_SHUTDOWN
-            event = Shutdown()
-            self._state = ClientState.SHUTDOWN
+            case "shutdown":
+                assert self._state == ClientState.WAITING_FOR_SHUTDOWN
+                event = Shutdown()
+                self._state = ClientState.SHUTDOWN
 
-        elif request.method == "textDocument/completion":
-            completion_list = None
+            case "textDocument/completion":
+                completion_list = None
 
-            try:
-                completion_list = CompletionList.parse_obj(response.result)
-            except ValidationError:
                 try:
-                    completion_list = CompletionList(
-                        isIncomplete=False,
-                        items=parse_obj_as(t.List[CompletionItem], response.result),
-                    )
+                    completion_list = CompletionList.parse_obj(response.result)
                 except ValidationError:
-                    assert response.result is None
+                    try:
+                        completion_list = CompletionList(
+                            isIncomplete=False,
+                            items=parse_obj_as(t.List[CompletionItem], response.result),
+                        )
+                    except ValidationError:
+                        assert response.result is None
 
-            event = Completion(message_id=response.id, completion_list=completion_list)
+                event = Completion(message_id=response.id, completion_list=completion_list)
 
-        elif request.method == "textDocument/willSaveWaitUntil":
-            event = WillSaveWaitUntilEdits(
-                edits=parse_obj_as(t.List[TextEdit], response.result)
-            )
+            case "textDocument/willSaveWaitUntil":
+                event = WillSaveWaitUntilEdits(
+                    edits=parse_obj_as(t.List[TextEdit], response.result)
+                )
 
-        elif request.method == "textDocument/hover":
-            if response.result is not None:
-                event = Hover.parse_obj(response.result)
-            else:
-                event = Hover(contents=[])  # null response
-            event.message_id = response.id
+            case "textDocument/hover":
+                if response.result is not None:
+                    event = Hover.parse_obj(response.result)
+                else:
+                    event = Hover(contents=[])  # null response
+                event.message_id = response.id
+            
+            case "textDocument/foldingRange":
+                event = parse_obj_as(MFoldingRanges, response)
+                event.message_id = response.id
+            
+            case "textDocument/signatureHelp":
+                if response.result is not None:
+                    event = SignatureHelp.parse_obj(response.result)
+                else:
+                    event = SignatureHelp(signatures=[])  # null response
+                event.message_id = response.id
 
-        elif request.method == "textDocument/signatureHelp":
-            if response.result is not None:
-                event = SignatureHelp.parse_obj(response.result)
-            else:
-                event = SignatureHelp(signatures=[])  # null response
-            event.message_id = response.id
+            case "textDocument/documentSymbol":
+                event = parse_obj_as(MDocumentSymbols, response)
+                event.message_id = response.id
+            
+            case "textDocument/rename":
+                event = parse_obj_as(WorkspaceEdit, response.result)
+                event.message_id = response.id
 
-        elif request.method == "textDocument/documentSymbol":
-            event = parse_obj_as(MDocumentSymbols, response)
-            event.message_id = response.id
-        
-        elif request.method == "textDocument/rename":
-            event = parse_obj_as(WorkspaceEdit, response.result)
-            event.message_id = response.id
+            # GOTOs
+            case "textDocument/definition":
+                event = parse_obj_as(Definition, response)
+                event.message_id = response.id
 
-        # GOTOs
-        elif request.method == "textDocument/definition":
-            event = parse_obj_as(Definition, response)
-            event.message_id = response.id
+            case "textDocument/references":
+                event = parse_obj_as(References, response)
+            case "textDocument/implementation":
+                event = parse_obj_as(Implementation, response)
+            case "textDocument/declaration":
+                event = parse_obj_as(Declaration, response)
+            case "textDocument/typeDefinition":
+                event = parse_obj_as(TypeDefinition, response)
 
-        elif request.method == "textDocument/references":
-            event = parse_obj_as(References, response)
-        elif request.method == "textDocument/implementation":
-            event = parse_obj_as(Implementation, response)
-        elif request.method == "textDocument/declaration":
-            event = parse_obj_as(Declaration, response)
-        elif request.method == "textDocument/typeDefinition":
-            event = parse_obj_as(TypeDefinition, response)
+            case "textDocument/prepareCallHierarchy":
+                event = parse_obj_as(MCallHierarchItems, response)
 
-        elif request.method == "textDocument/prepareCallHierarchy":
-            event = parse_obj_as(MCallHierarchItems, response)
+            case "textDocument/formatting" | "textDocument/rangeFormatting":
+                event = parse_obj_as(DocumentFormatting, response)
+                event.message_id = response.id
 
-        elif (
-            request.method == "textDocument/formatting"
-            or request.method == "textDocument/rangeFormatting"
-        ):
-            event = parse_obj_as(DocumentFormatting, response)
-            event.message_id = response.id
+            # WORKSPACE
+            case "workspace/symbol":
+                event = parse_obj_as(MWorkspaceSymbols, response)
 
-        # WORKSPACE
-        elif request.method == "workspace/symbol":
-            event = parse_obj_as(MWorkspaceSymbols, response)
-
-        else:
-            raise NotImplementedError((response, request))
+            case _:
+                raise NotImplementedError((response, request))
 
         return event
 
@@ -481,6 +487,13 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/hover", params=text_document_position.dict()
+        )
+    
+    def folding_range(self, text_document: TextDocumentIdentifier) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/foldingRange",
+            params={"textDocument": text_document.dict()},
         )
 
     def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:

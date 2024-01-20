@@ -4,10 +4,8 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "tarts"
-version = "0.11.0"
-description = """
-Client library for managing language server requests & responses.
-"""
+version = "0.12.0"
+description = "Client library for managing language server requests & responses."
 authors = [
     "Billy <billyeatcookies@users.noreply.github.com>", 
     "Purple Myst <PurpleMyst@users.noreply.github.com>",

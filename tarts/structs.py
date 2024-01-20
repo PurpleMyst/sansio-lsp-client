@@ -372,6 +372,13 @@ class SymbolInformation(BaseModel):
     location: Location
     containerName: t.Optional[str]
 
+class FoldingRange(BaseModel):
+	startLine: int
+	startCharacter: t.Optional[int]
+	endLine: int
+	endCharacter: t.Optional[int]
+	kind: t.Optional[str] # comment, imports, region
+	collapsedText: t.Optional[str]
 
 # Usually a hierarchy, e.g. a symbol with kind=SymbolKind.CLASS contains
 # several SymbolKind.METHOD symbols
