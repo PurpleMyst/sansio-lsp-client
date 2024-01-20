@@ -5,6 +5,7 @@ from pydantic import BaseModel, PrivateAttr
 if t.TYPE_CHECKING:  # avoid import cycle at runtime
     from .client import Client
 from .structs import (
+    FoldingRange,
     JSONDict,
     Diagnostic,
     MessageType,
@@ -180,6 +181,9 @@ class Implementation(Event):
 class MWorkspaceSymbols(Event):
     result: t.Union[t.List[SymbolInformation], None]
 
+class MFoldingRanges(Event):
+    message_id: t.Optional[Id]
+    result: t.Optional[t.List[FoldingRange]]
 
 class MDocumentSymbols(Event):
     message_id: t.Optional[Id]

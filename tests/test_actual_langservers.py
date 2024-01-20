@@ -26,6 +26,7 @@ METHOD_IMPLEMENTATION = "implementation"
 METHOD_DECLARATION = "declaration"
 METHOD_TYPEDEF = "typeDefinition"
 METHOD_DOC_SYMBOLS = "documentSymbol"
+METHOD_FOLDING_RANGE = "foldingRange"
 METHOD_FORMAT_DOC = "formatting"
 METHOD_FORMAT_SEL = "rangeFormatting"
 
@@ -40,6 +41,7 @@ RESPONSE_TYPES = {
     METHOD_DECLARATION: lsp.Declaration,
     METHOD_TYPEDEF: lsp.TypeDefinition,
     METHOD_DOC_SYMBOLS: lsp.MDocumentSymbols,
+    METHOD_FOLDING_RANGE: lsp.MFoldingRanges,
     METHOD_FORMAT_DOC: lsp.DocumentFormatting,
     METHOD_FORMAT_SEL: lsp.DocumentFormatting,
 }
@@ -221,6 +223,9 @@ class ThreadedServer:
         elif method == METHOD_DOC_SYMBOLS:
             _docid = lsp.TextDocumentIdentifier(uri=file_uri)
             event_id = self.lsp_client.documentSymbol(text_document=_docid)
+        elif method == METHOD_FOLDING_RANGE:
+            _docid = lsp.TextDocumentIdentifier(uri=file_uri)
+            event_id = self.lsp_client.folding_range(text_document=_docid)
         else:
             raise NotImplementedError(method)
 
@@ -459,6 +464,11 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert len(doc_symbols.result) == 4
             assert {s.name for s in doc_symbols.result} == {"sys", "do_foo", "do_faa", "do_bar"}
 
+            # foldingRange ####
+            [item, *_] = do_method(METHOD_FOLDING_RANGE).result
+            assert item.startLine == 1
+            assert item.endLine == 2
+
             # formatting #####
             tserver.lsp_client.formatting(
                 text_document=lsp.TextDocumentIdentifier(
@@ -474,14 +484,13 @@ def check_that_langserver_works(langserver_name, tmp_path):
             rename = do_method(METHOD_RENAME)
             assert rename.documentChanges
             assert rename.documentChanges[0].edits
-            print(rename.documentChanges[0].edits[0].newText)
             assert rename.documentChanges[0].edits[0].newText == 'import sys\ndef do_foo(): #definition-5\n    sys.getdefaultencoding() #hover-5\ndef do_nothing(): #rename-5\n    sys.getdefaultencoding()\ndef do_bar(): #references-5\n    sys.intern("hey") #signatureHelp-2\n\ndo_ #completion-1'
 
             # Error -- method not supported by server #####
             # This creates a scary exception in pytest output. That's expected.
-            # tserver.lsp_client.workspace_symbol()
-            # err = tserver.wait_for_message_of_type(lsp.ResponseError)
-            # assert err.message == "Method Not Found: workspace/symbol"
+            tserver.lsp_client.workspace_symbol()
+            err = tserver.wait_for_message_of_type(lsp.ResponseError)
+            assert err.message == "Method Not Found: workspace/symbol"
 
         if langserver_name in ("clangd_10", "clangd_11"):
             # workspace/symbol #####
