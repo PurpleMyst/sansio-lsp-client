@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-import tarts as lsp
+import sansio_lsp_client as lsp
 
 
 METHOD_COMPLETION = "completion"

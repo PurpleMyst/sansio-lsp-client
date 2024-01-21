@@ -21,7 +21,5 @@ jobs:
         pip install poetry && poetry install
     - name: mypy
       run: |
-        poetry run python3 -m mypy --python-version 3.6 --strict tarts
-        poetry run python3 -m mypy --python-version 3.7 --strict tarts
-        poetry run python3 -m mypy --python-version 3.8 --strict tarts
-        poetry run python3 -m mypy --python-version 3.9 --strict tarts
+        poetry run python3 -m mypy --python-version 3.10 --strict sansio_lsp_client
+        poetry run python3 -m mypy --python-version 3.11 --strict sansio_lsp_client

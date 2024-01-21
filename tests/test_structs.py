@@ -1,4 +1,4 @@
-import tarts as lsp
+import sansio_lsp_client as lsp
 
 
 def test_as_tuple():

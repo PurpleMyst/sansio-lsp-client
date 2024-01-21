@@ -9,9 +9,9 @@ fi
 
 version=$1
 
-sed -i "s/__version__ = .*/__version__ = \"$version\"/" tarts/__init__.py
+sed -i "s/__version__ = .*/__version__ = \"$version\"/" sansio_lsp_client/__init__.py
 poetry version "$version"
 
-git add tarts/__init__.py pyproject.toml
+git add sansio_lsp_client/__init__.py pyproject.toml
 git commit -v -m "chore: bump version"
 git tag "v$version"
