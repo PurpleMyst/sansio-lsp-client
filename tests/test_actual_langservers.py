@@ -27,6 +27,7 @@ METHOD_DECLARATION = "declaration"
 METHOD_TYPEDEF = "typeDefinition"
 METHOD_DOC_SYMBOLS = "documentSymbol"
 METHOD_FOLDING_RANGE = "foldingRange"
+METHOD_INLAY_HINT = "inlayHint"
 METHOD_FORMAT_DOC = "formatting"
 METHOD_FORMAT_SEL = "rangeFormatting"
 
@@ -42,6 +43,7 @@ RESPONSE_TYPES = {
     METHOD_TYPEDEF: lsp.TypeDefinition,
     METHOD_DOC_SYMBOLS: lsp.MDocumentSymbols,
     METHOD_FOLDING_RANGE: lsp.MFoldingRanges,
+    METHOD_INLAY_HINT: lsp.MInlayHints,
     METHOD_FORMAT_DOC: lsp.DocumentFormatting,
     METHOD_FORMAT_SEL: lsp.DocumentFormatting,
 }
@@ -226,6 +228,10 @@ class ThreadedServer:
         elif method == METHOD_FOLDING_RANGE:
             _docid = lsp.TextDocumentIdentifier(uri=file_uri)
             event_id = self.lsp_client.folding_range(text_document=_docid)
+        elif method == METHOD_INLAY_HINT:
+            _docid = lsp.TextDocumentIdentifier(uri=file_uri)
+            _range = lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=6, character=10))
+            event_id = self.lsp_client.inlay_hint(text_document=_docid, range=_range)
         else:
             raise NotImplementedError(method)
 
@@ -468,6 +474,8 @@ def check_that_langserver_works(langserver_name, tmp_path):
             [item, *_] = do_method(METHOD_FOLDING_RANGE).result
             assert item.startLine == 1
             assert item.endLine == 2
+            print(item)
+        
 
             # formatting #####
             tserver.lsp_client.formatting(
@@ -491,7 +499,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             tserver.lsp_client.workspace_symbol()
             err = tserver.wait_for_message_of_type(lsp.ResponseError)
             assert err.message == "Method Not Found: workspace/symbol"
-
+        
         if langserver_name in ("clangd_10", "clangd_11"):
             # workspace/symbol #####
             # TODO - empty for some reason

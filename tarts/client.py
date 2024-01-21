@@ -28,6 +28,7 @@ from .events import (
     TypeDefinition,
     RegisterCapabilityRequest,
     MDocumentSymbols,
+    MInlayHints,
     DocumentFormatting,
     WorkDoneProgressCreate,
     WorkDoneProgressBegin,
@@ -90,6 +91,9 @@ CAPABILITIES = {
             "contentFormat": ["markdown", "plaintext"],
         },
         "foldingRange": {
+            "dynamicRegistration": True,
+        },
+        "inlayHint": {
             "dynamicRegistration": True,
         },
         "definition": {"dynamicRegistration": True, "linkSupport": True},
@@ -278,6 +282,10 @@ class Client:
 
             case "textDocument/documentSymbol":
                 event = parse_obj_as(MDocumentSymbols, response)
+                event.message_id = response.id
+            
+            case "textDocument/inlayHint":
+                event = parse_obj_as(MInlayHints, response)
                 event.message_id = response.id
             
             case "textDocument/rename":
@@ -512,6 +520,16 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/declaration", params=text_document_position.dict()
+        )
+    
+    def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> int:
+        assert self._state == ClientState.NORMAL
+        return self._send_request(
+            method="textDocument/inlayHint", 
+            params={
+                "textDocument": text_document.dict(),
+                "range": range.dict()
+            }
         )
 
     def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:

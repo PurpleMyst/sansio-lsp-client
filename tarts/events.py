@@ -6,6 +6,7 @@ if t.TYPE_CHECKING:  # avoid import cycle at runtime
     from .client import Client
 from .structs import (
     FoldingRange,
+    InlayHint,
     JSONDict,
     Diagnostic,
     MessageType,
@@ -184,6 +185,10 @@ class MWorkspaceSymbols(Event):
 class MFoldingRanges(Event):
     message_id: t.Optional[Id]
     result: t.Optional[t.List[FoldingRange]]
+
+class MInlayHints(Event):
+    message_id: t.Optional[Id]
+    result: t.Optional[t.List[InlayHint]]
 
 class MDocumentSymbols(Event):
     message_id: t.Optional[Id]

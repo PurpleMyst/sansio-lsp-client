@@ -334,7 +334,7 @@ class SymbolTag(enum.IntEnum):
 
 class CallHierarchyItem(BaseModel):
     name: str
-    king: SymbolKind
+    kind: SymbolKind
     tags: t.Optional[SymbolTag]
     detail: t.Optional[str]
     uri: str
@@ -371,6 +371,26 @@ class SymbolInformation(BaseModel):
     deprecated: t.Optional[bool]
     location: Location
     containerName: t.Optional[str]
+
+class InlayHintLabelPart(BaseModel):
+    value: str
+    tooltip: t.Optional[t.Union[str, MarkupContent]]
+    location: t.Optional[Location]
+    command: t.Optional[Command]
+
+class InlayHintKind(enum.IntEnum):
+    TYPE = 1
+    PARAMETER = 2
+
+class InlayHint(BaseModel):
+    position: Position
+    label: t.Union[str, t.List[InlayHintLabelPart]]
+    kind: t.Optional[InlayHintKind]
+    textEdits: t.Optional[t.List[TextEdit]]
+    tooltip: t.Optional[t.Union[str, MarkupContent]]
+    paddingLeft: t.Optional[bool]
+    paddingRight: t.Optional[bool]
+    data: t.Optional[t.Any]
 
 class FoldingRange(BaseModel):
 	startLine: int
