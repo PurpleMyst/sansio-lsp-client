@@ -25,11 +25,11 @@ You can also look at [this project's tests](tests/), which are simple in princip
 ## Maintenance Status
 
 Currently (2024) there are two maintainers (Akuli and PurpleMyst) who merge and review pull requests.
-Also, the project cannot become totally broken, because Akuli uses Porcupine almost every day.
-and [Porcupine's langserver plugin](https://github.com/Akuli/porcupine/blob/main/porcupine/plugins/langserver.py) uses this library.
+Also, the project cannot become totally broken, because Akuli uses Porcupine almost every day,
+and langserver support is an essential part of Porcupine.
 
 New features are usually added by someone else than the two maintainers.
-We recommend just adding what you need for your use case.
+We recommend just adding what you need for your use case and making a pull request.
 
 
 ## Developing
