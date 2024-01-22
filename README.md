@@ -6,10 +6,18 @@ It is used in [Porcupine](https://github.com/Akuli/porcupine),
 and will soon be used in [Biscuit](https://github.com/billyeatcookies/Biscuit) too.
 
 The "sans io" part of the name means "without IO".
-It means that you read data from the stdout of a langserver process,
-and this library gives you data to write to its stdin.
-This way, this library is very flexible:
-you can use it regardless of how you are running the langserver.
+It means that this library doesn't do IO, and you do it instead.
+Specifically:
+- You start a langserver process
+- You read data from the stdout of the langserver process
+- You feed the data to this library
+- This library returns data to be written to the stdin of the langserver process
+- You write the data to the stdin of the langserver process.
+
+This way, this library is very flexible.
+It assumes nothing about how IO works,
+so you can use it with threads, without threads, with sync code, with async code,
+or with any other kind of IO thing.
 
 
 ## Usage
