@@ -126,7 +126,7 @@ CAPABILITIES = {
         },
         "workDoneProgress": True,
     },
-"workspace": {
+    "workspace": {
         "symbol": {
             "dynamicRegistration": True,
             "symbolKind": {"valueSet": list(SymbolKind)},
