@@ -1,7 +1,43 @@
 # sansio-lsp-client
 
-An implementation of the client side of the LSP protocol, useful for embedding
+This is an implementation of the client side of the langserver (LSP) protocol, useful for embedding
 easily in your editor.
+It is used in [Porcupine](https://github.com/Akuli/porcupine),
+and will soon be used in [Biscuit](https://github.com/billyeatcookies/Biscuit) too.
+
+The "sans io" part of the name means "without IO".
+It means that this library doesn't do IO, and you do it instead.
+Specifically:
+- You start a langserver process
+- You read data from the stdout of the langserver process
+- You feed the data to this library
+- This library returns data to be written to the stdin of the langserver process
+- You write the data to the stdin of the langserver process.
+
+This way, this library is very flexible.
+It assumes nothing about how IO works,
+so you can use it with threads, without threads, with sync code, with async code,
+or with any other kind of IO thing.
+
+
+## Usage
+
+Unfortunately, there isn't much documentation. Hopefully someone will write some docs eventually :)
+
+If you want to add langserver support to a text editor, you could look at
+[Porcupine's langserver plugin](https://github.com/Akuli/porcupine/blob/main/porcupine/plugins/langserver.py)
+to get started. Porcupine is MIT licensed, so you can use its code in your projects as long as you credit Porcupine accordingly.
+You can also look at [this project's tests](tests/), which are simple in principle, but kind of messy in practice.
+
+
+## Maintenance Status
+
+Currently (2024) there are two maintainers (Akuli and PurpleMyst) who merge and review pull requests.
+Also, the project cannot become totally broken, because Akuli uses Porcupine almost every day,
+and langserver support is an essential part of Porcupine.
+
+New features are usually added by someone else than the two maintainers.
+We recommend just adding what you need for your use case and making a pull request.
 
 
 ## Developing
