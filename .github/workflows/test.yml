@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
+        python-version: ["3.7", "3.8", "3.9"]
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v1
@@ -32,12 +32,13 @@ jobs:
             python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
             chmod +x clangd_$VERSION/bin/clangd
           done
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16.x
-      - run: |
-          cd tests/langservers && GOPATH="$(pwd)" GO111MODULE=on go get golang.org/x/tools/gopls@latest
+        # TODO: go fails to install
+#      - name: Install Go
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: 1.16.x
+#      - run: |
+#          cd tests/langservers && GOPATH="$(pwd)" GO111MODULE=on go get golang.org/x/tools/gopls@latest
       - run: |
           pip install poetry && poetry install
       - run: |
