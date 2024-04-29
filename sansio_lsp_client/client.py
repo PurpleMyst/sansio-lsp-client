@@ -135,7 +135,7 @@ CAPABILITIES = {
         # TODO 'workspaceEdit':..., #'applyEdit':..., 'executeCommand':...,
         "configuration": True,
         "didChangeConfiguration": {"dynamicRegistration": True},
-    },    
+    },
 }
 
 
@@ -255,7 +255,9 @@ class Client:
                     except ValidationError:
                         assert response.result is None
 
-                event = Completion(message_id=response.id, completion_list=completion_list)
+                event = Completion(
+                    message_id=response.id, completion_list=completion_list
+                )
 
             case "textDocument/willSaveWaitUntil":
                 event = WillSaveWaitUntilEdits(
@@ -268,11 +270,11 @@ class Client:
                 else:
                     event = Hover(contents=[])  # null response
                 event.message_id = response.id
-            
+
             case "textDocument/foldingRange":
                 event = parse_obj_as(MFoldingRanges, response)
                 event.message_id = response.id
-            
+
             case "textDocument/signatureHelp":
                 if response.result is not None:
                     event = SignatureHelp.parse_obj(response.result)
@@ -283,11 +285,11 @@ class Client:
             case "textDocument/documentSymbol":
                 event = parse_obj_as(MDocumentSymbols, response)
                 event.message_id = response.id
-            
+
             case "textDocument/inlayHint":
                 event = parse_obj_as(MInlayHints, response)
                 event.message_id = response.id
-            
+
             case "textDocument/rename":
                 event = parse_obj_as(WorkspaceEdit, response.result)
                 event.message_id = response.id
@@ -481,10 +483,11 @@ class Client:
             params.update(context.dict())
         return self._send_request(method="textDocument/completion", params=params)
 
-    def rename(self, 
-               text_document_position: TextDocumentPosition,
-               new_name: str,
-               ) -> int:
+    def rename(
+        self,
+        text_document_position: TextDocumentPosition,
+        new_name: str,
+    ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}
         params.update(text_document_position.dict())
@@ -496,7 +499,7 @@ class Client:
         return self._send_request(
             method="textDocument/hover", params=text_document_position.dict()
         )
-    
+
     def folding_range(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
@@ -521,15 +524,12 @@ class Client:
         return self._send_request(
             method="textDocument/declaration", params=text_document_position.dict()
         )
-    
+
     def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/inlayHint", 
-            params={
-                "textDocument": text_document.dict(),
-                "range": range.dict()
-            }
+            method="textDocument/inlayHint",
+            params={"textDocument": text_document.dict(), "range": range.dict()},
         )
 
     def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:

@@ -53,6 +53,7 @@ class TextDocumentIdentifier(BaseModel):
 class OptionalVersionedTextDocumentIdentifier(TextDocumentIdentifier):
     version: t.Optional[int]
 
+
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
     version: t.Optional[int]
 
@@ -167,9 +168,11 @@ class TextEdit(BaseModel):
     newText: str
     annotationId: t.Optional[str]
 
+
 class TextDocumentEdit(BaseModel):
     textDocument: OptionalVersionedTextDocumentIdentifier
     edits: t.List[TextEdit]
+
 
 class Command(BaseModel):
     title: str
@@ -372,15 +375,18 @@ class SymbolInformation(BaseModel):
     location: Location
     containerName: t.Optional[str]
 
+
 class InlayHintLabelPart(BaseModel):
     value: str
     tooltip: t.Optional[t.Union[str, MarkupContent]]
     location: t.Optional[Location]
     command: t.Optional[Command]
 
+
 class InlayHintKind(enum.IntEnum):
     TYPE = 1
     PARAMETER = 2
+
 
 class InlayHint(BaseModel):
     position: Position
@@ -392,13 +398,15 @@ class InlayHint(BaseModel):
     paddingRight: t.Optional[bool]
     data: t.Optional[t.Any]
 
+
 class FoldingRange(BaseModel):
-	startLine: int
-	startCharacter: t.Optional[int]
-	endLine: int
-	endCharacter: t.Optional[int]
-	kind: t.Optional[str] # comment, imports, region
-	collapsedText: t.Optional[str]
+    startLine: int
+    startCharacter: t.Optional[int]
+    endLine: int
+    endCharacter: t.Optional[int]
+    kind: t.Optional[str]  # comment, imports, region
+    collapsedText: t.Optional[str]
+
 
 # Usually a hierarchy, e.g. a symbol with kind=SymbolKind.CLASS contains
 # several SymbolKind.METHOD symbols

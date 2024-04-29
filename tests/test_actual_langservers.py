@@ -50,9 +50,9 @@ RESPONSE_TYPES = {
 
 
 def find_method_marker(text, method):
-    """ searches for line: `<code> #<method>-<shift>`
-          - example: `sys.getdefaultencoding() #{METHOD_COMPLETION}-5`
-            position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng()`
+    """searches for line: `<code> #<method>-<shift>`
+    - example: `sys.getdefaultencoding() #{METHOD_COMPLETION}-5`
+      position returned will be 5 chars before `#...`: `sys.getdefaultencodi | ng()`
     """
     match = re.search(rf"\#{method}-(\d+)", text)
     before_match = text[: match.start()]
@@ -207,7 +207,9 @@ class ThreadedServer:
                 ),
             )
         elif method == METHOD_RENAME:
-            event_id = self.lsp_client.rename(text_document_position=doc_pos(), new_name="do_nothing")
+            event_id = self.lsp_client.rename(
+                text_document_position=doc_pos(), new_name="do_nothing"
+            )
         elif method == METHOD_HOVER:
             event_id = self.lsp_client.hover(text_document_position=doc_pos())
         elif method == METHOD_SIG_HELP:
@@ -230,7 +232,10 @@ class ThreadedServer:
             event_id = self.lsp_client.folding_range(text_document=_docid)
         elif method == METHOD_INLAY_HINT:
             _docid = lsp.TextDocumentIdentifier(uri=file_uri)
-            _range = lsp.Range(start=lsp.Position(line=0, character=0), end=lsp.Position(line=6, character=10))
+            _range = lsp.Range(
+                start=lsp.Position(line=0, character=0),
+                end=lsp.Position(line=6, character=10),
+            )
             event_id = self.lsp_client.inlay_hint(text_document=_docid, range=_range)
         else:
             raise NotImplementedError(method)
@@ -468,14 +473,18 @@ def check_that_langserver_works(langserver_name, tmp_path):
             # documentSymbol #####
             doc_symbols = do_method(METHOD_DOC_SYMBOLS)
             assert len(doc_symbols.result) == 4
-            assert {s.name for s in doc_symbols.result} == {"sys", "do_foo", "do_faa", "do_bar"}
+            assert {s.name for s in doc_symbols.result} == {
+                "sys",
+                "do_foo",
+                "do_faa",
+                "do_bar",
+            }
 
             # foldingRange ####
             [item, *_] = do_method(METHOD_FOLDING_RANGE).result
             assert item.startLine == 1
             assert item.endLine == 2
             print(item)
-        
 
             # formatting #####
             tserver.lsp_client.formatting(
@@ -488,18 +497,21 @@ def check_that_langserver_works(langserver_name, tmp_path):
                 RESPONSE_TYPES[METHOD_FORMAT_DOC]
             )
             assert formatting.result
-        
+
             rename = do_method(METHOD_RENAME)
             assert rename.documentChanges
             assert rename.documentChanges[0].edits
-            assert rename.documentChanges[0].edits[0].newText == 'import sys\ndef do_foo(): #definition-5\n    sys.getdefaultencoding() #hover-5\ndef do_nothing(): #rename-5\n    sys.getdefaultencoding()\ndef do_bar(): #references-5\n    sys.intern("hey") #signatureHelp-2\n\ndo_ #completion-1'
+            assert (
+                rename.documentChanges[0].edits[0].newText
+                == 'import sys\ndef do_foo(): #definition-5\n    sys.getdefaultencoding() #hover-5\ndef do_nothing(): #rename-5\n    sys.getdefaultencoding()\ndef do_bar(): #references-5\n    sys.intern("hey") #signatureHelp-2\n\ndo_ #completion-1'
+            )
 
             # Error -- method not supported by server #####
             # This creates a scary exception in pytest output. That's expected.
             tserver.lsp_client.workspace_symbol()
             err = tserver.wait_for_message_of_type(lsp.ResponseError)
             assert err.message == "Method Not Found: workspace/symbol"
-        
+
         if langserver_name in ("clangd_10", "clangd_11"):
             # workspace/symbol #####
             # TODO - empty for some reason
@@ -535,13 +547,16 @@ def test_pylsp(tmp_path):
 def test_javascript_typescript_langserver(tmp_path):
     check_that_langserver_works("js", tmp_path)
 
+
 @pytest.mark.skipif(_clangd_10 is None, reason="clangd 10 not found")
 def test_clangd_10(tmp_path):
     check_that_langserver_works("clangd_10", tmp_path)
 
+
 @pytest.mark.skipif(_clangd_11 is None, reason="clangd 11 not found")
 def test_clangd_11(tmp_path):
     check_that_langserver_works("clangd_11", tmp_path)
+
 
 @pytest.mark.skipif(
     not (langserver_dir / "bin" / "gopls").exists(),

@@ -20,11 +20,11 @@ include = ["sansio_lsp_client/py.typed"]
 python = ">=3.10"
 dataclasses = { version = "^0.8", python = ">=3.6,<3.7" }
 pydantic = "^1.10.14"
+black = "^24.4.2"
+mypy = "^1.10.0"
 
 [tool.poetry.group.dev.dependencies]
 python-lsp-server = "^1.9.0"
-mypy = "^1.8.0"
-black = "^23.12.1"
 pytest = "^7.4.4"
 pytest-cov = "^4.1.0"
 lxml = "^5.1.0"
@@ -32,6 +32,6 @@ pyflakes = "^3.2.0"
 
 [tool.black]
 line-length = 88
-target-version = ["py38"]
+target-version = ["py310"]
 # TODO: what's the purpose of specifying exclude here?
 exclude = 'build/|buck-out/|dist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|/playground.py'

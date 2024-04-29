@@ -13,7 +13,7 @@ def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
         "Content-Length": content_length,
         "Content-Type": f"application/vscode-jsonrpc; charset={encoding}",
     }
-    for (key, value) in headers.items():
+    for key, value in headers.items():
         headers_bytes += f"{key}: {value}\r\n".encode(encoding)
     headers_bytes += b"\r\n"
     return headers_bytes
@@ -147,7 +147,9 @@ def _parse_one_message(
     else:
         del response_buf[:-unused_bytes_count]
 
-    def parse_request_or_response(data: JSONDict,) -> t.Union[Request, Response]:
+    def parse_request_or_response(
+        data: JSONDict,
+    ) -> t.Union[Request, Response]:
         del data["jsonrpc"]
         return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
 
