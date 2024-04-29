@@ -10,6 +10,7 @@ from pydantic import BaseModel
 #                     t.List['JSONValue'], t.Dict[str, 'JSONValue']]
 # JSONDict = t.Dict[str, JSONValue]
 JSONDict = t.Dict[str, t.Any]
+JSONList = t.List[t.Any]
 
 Id = t.Union[int, str]
 

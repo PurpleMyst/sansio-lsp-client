@@ -47,6 +47,7 @@ from .structs import (
     CompletionItem,
     Request,
     JSONDict,
+    JSONList,
     TextDocumentItem,
     TextDocumentIdentifier,
     VersionedTextDocumentIdentifier,
@@ -209,8 +210,8 @@ class Client:
 
     def _send_response(
         self,
-        id: int,
-        result: t.Optional[JSONDict] = None,
+        id: int | str,
+        result: t.Optional[t.Union[JSONDict, JSONList]] = None,
         error: t.Optional[JSONDict] = None,
     ) -> None:
         self._send_buf += _make_response(id=id, result=result, error=error)

@@ -4,7 +4,7 @@ import typing as t
 
 from pydantic import parse_obj_as
 
-from .structs import Request, Response, JSONDict
+from .structs import Request, Response, JSONDict, JSONList
 
 
 def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
@@ -46,8 +46,8 @@ def _make_request(
 
 
 def _make_response(
-    id: int,
-    result: t.Optional[JSONDict] = None,
+    id: int | str,  # TODO: does this make sense?
+    result: t.Optional[t.Union[JSONDict, JSONList]] = None,
     error: t.Optional[JSONDict] = None,
     *,
     encoding: str = "utf-8",
