@@ -495,7 +495,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
                 RESPONSE_TYPES[METHOD_FORMAT_DOC]
             )
             # TODO: why is this None?
-            #assert formatting.result
+            # assert formatting.result
             assert formatting.result is None
 
             rename = do_method(METHOD_RENAME)
