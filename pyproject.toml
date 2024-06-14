@@ -4,7 +4,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "sansio-lsp-client"
-version = "0.10.0"
+version = "0.11.0"
 description = """
 An implementation of the client side of the LSP protocol, useful for \
 embedding easily in your editor.\
@@ -17,21 +17,21 @@ keywords = ["sansio", "languageserver"]
 include = ["sansio_lsp_client/py.typed"]
 
 [tool.poetry.dependencies]
-python = ">=3.6"
-dataclasses = { version = "^0.7", python = ">=3.6,<3.7" }
-pydantic = "^1.7.3"
+python = ">=3.10"
+dataclasses = { version = "^0.8", python = ">=3.6,<3.7" }
+pydantic = "^1.10.14"
+black = "^24.4.2"
+mypy = "^1.10.0"
 
-[tool.poetry.dev-dependencies]
-mypy = "^0.790.0"
-black = "18.9b0"
-python-language-server = { extras = ["all"], version = "^0.36.2" }
-pytest = "5.4.3"
-pytest-cov = "^2.10.1"
-lxml = "^4.6.2"
-pyflakes = "^2.2.0"
+[tool.poetry.group.dev.dependencies]
+python-lsp-server = "^1.9.0"
+pytest = "^7.4.4"
+pytest-cov = "^4.1.0"
+lxml = "^5.1.0"
+pyflakes = "^3.2.0"
 
 [tool.black]
 line-length = 88
-target-version = ["py36"]
+target-version = ["py310"]
 # TODO: what's the purpose of specifying exclude here?
 exclude = 'build/|buck-out/|dist/|_build/|\.git/|\.hg/|\.mypy_cache/|\.tox/|\.venv/|/playground.py'

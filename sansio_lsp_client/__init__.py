@@ -1,7 +1,7 @@
-"""An implementation of the client side of the LSP protocol, useful for embedding easily in your editor."""
+"""Client library for managing language server requests & responses."""
 
 from .client import *
 from .events import *
 from .structs import *
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
