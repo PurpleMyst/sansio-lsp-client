@@ -1,67 +1,67 @@
 import enum
 import typing as t
 
-from pydantic import parse_obj_as, ValidationError
+from pydantic import ValidationError, parse_obj_as
 
 from .events import (
-    MFoldingRanges,
-    ResponseError,
-    Initialized,
     Completion,
-    ServerRequest,
-    Shutdown,
-    PublishDiagnostics,
-    Event,
-    ShowMessage,
-    ServerNotification,
-    WillSaveWaitUntilEdits,
-    ShowMessageRequest,
-    LogMessage,
-    Hover,
-    SignatureHelp,
-    Definition,
-    References,
-    MCallHierarchItems,
-    Implementation,
-    MWorkspaceSymbols,
-    Declaration,
-    TypeDefinition,
-    RegisterCapabilityRequest,
-    MDocumentSymbols,
-    MInlayHints,
-    DocumentFormatting,
-    WorkDoneProgressCreate,
-    WorkDoneProgressBegin,
-    WorkDoneProgressReport,
-    WorkDoneProgressEnd,
     ConfigurationRequest,
+    Declaration,
+    Definition,
+    DocumentFormatting,
+    Event,
+    Hover,
+    Implementation,
+    Initialized,
+    LogMessage,
+    MCallHierarchItems,
+    MDocumentSymbols,
+    MFoldingRanges,
+    MInlayHints,
+    MWorkspaceSymbols,
+    PublishDiagnostics,
+    References,
+    RegisterCapabilityRequest,
+    ResponseError,
+    ServerNotification,
+    ServerRequest,
+    ShowMessage,
+    ShowMessageRequest,
+    Shutdown,
+    SignatureHelp,
+    TypeDefinition,
+    WillSaveWaitUntilEdits,
+    WorkDoneProgressBegin,
+    WorkDoneProgressCreate,
+    WorkDoneProgressEnd,
+    WorkDoneProgressReport,
     WorkspaceEdit,
     WorkspaceFolders,
 )
+from .io_handler import _make_request, _make_response, _parse_messages
 from .structs import (
-    Response,
-    TextDocumentPosition,
     CompletionContext,
-    CompletionList,
-    CompletionItemKind,
     CompletionItem,
-    Request,
+    CompletionItemKind,
+    CompletionList,
+    FormattingOptions,
+    Id,
     JSONDict,
     JSONList,
-    TextDocumentItem,
-    TextDocumentIdentifier,
-    VersionedTextDocumentIdentifier,
+    MWorkDoneProgressKind,
+    Range,
+    Request,
+    Response,
+    SymbolKind,
     TextDocumentContentChangeEvent,
+    TextDocumentIdentifier,
+    TextDocumentItem,
+    TextDocumentPosition,
     TextDocumentSaveReason,
     TextEdit,
-    Id,
-    SymbolKind,
-    FormattingOptions,
-    Range,
+    VersionedTextDocumentIdentifier,
     WorkspaceFolder,
-    MWorkDoneProgressKind,
 )
-from .io_handler import _make_request, _parse_messages, _make_response
 
 
 class ClientState(enum.Enum):
@@ -424,6 +424,12 @@ class Client:
                 "textDocument": text_document.dict(),
                 "contentChanges": [evt.dict() for evt in content_changes],
             },
+        )
+
+    def did_change_configuration(self, settings: t.Any) -> None:
+        assert self._state == ClientState.NORMAL
+        self._send_notification(
+            method="workspace/didChangeConfiguration", params={"settings": settings}
         )
 
     def will_save(
