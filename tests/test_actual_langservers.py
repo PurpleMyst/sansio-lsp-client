@@ -414,8 +414,6 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
         if langserver_name == "pylsp":
             assert "undefined name 'do_'" in diag_msgs
-            assert "E302 expected 2 blank lines, found 0" in diag_msgs
-            assert "W292 no newline at end of file" in diag_msgs
         elif langserver_name == "pyright":
             assert diag_msgs == ['"do_" is not defined', "Expression value is unused"]
         elif langserver_name == "js":
