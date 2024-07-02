@@ -10,6 +10,7 @@ from pydantic import BaseModel
 #                     t.List['JSONValue'], t.Dict[str, 'JSONValue']]
 # JSONDict = t.Dict[str, JSONValue]
 JSONDict = t.Dict[str, t.Any]
+JSONList = t.List[t.Any]
 
 Id = t.Union[int, str]
 
@@ -48,6 +49,10 @@ class TextDocumentItem(BaseModel):
 
 class TextDocumentIdentifier(BaseModel):
     uri: str
+
+
+class OptionalVersionedTextDocumentIdentifier(TextDocumentIdentifier):
+    version: t.Optional[int]
 
 
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
@@ -162,6 +167,12 @@ class MarkupContent(BaseModel):
 class TextEdit(BaseModel):
     range: Range
     newText: str
+    annotationId: t.Optional[str]
+
+
+class TextDocumentEdit(BaseModel):
+    textDocument: OptionalVersionedTextDocumentIdentifier
+    edits: t.List[TextEdit]
 
 
 class Command(BaseModel):
@@ -327,7 +338,7 @@ class SymbolTag(enum.IntEnum):
 
 class CallHierarchyItem(BaseModel):
     name: str
-    king: SymbolKind
+    kind: SymbolKind
     tags: t.Optional[SymbolTag]
     detail: t.Optional[str]
     uri: str
@@ -364,6 +375,38 @@ class SymbolInformation(BaseModel):
     deprecated: t.Optional[bool]
     location: Location
     containerName: t.Optional[str]
+
+
+class InlayHintLabelPart(BaseModel):
+    value: str
+    tooltip: t.Optional[t.Union[str, MarkupContent]]
+    location: t.Optional[Location]
+    command: t.Optional[Command]
+
+
+class InlayHintKind(enum.IntEnum):
+    TYPE = 1
+    PARAMETER = 2
+
+
+class InlayHint(BaseModel):
+    position: Position
+    label: t.Union[str, t.List[InlayHintLabelPart]]
+    kind: t.Optional[InlayHintKind]
+    textEdits: t.Optional[t.List[TextEdit]]
+    tooltip: t.Optional[t.Union[str, MarkupContent]]
+    paddingLeft: t.Optional[bool]
+    paddingRight: t.Optional[bool]
+    data: t.Optional[t.Any]
+
+
+class FoldingRange(BaseModel):
+    startLine: int
+    startCharacter: t.Optional[int]
+    endLine: int
+    endCharacter: t.Optional[int]
+    kind: t.Optional[str]  # comment, imports, region
+    collapsedText: t.Optional[str]
 
 
 # Usually a hierarchy, e.g. a symbol with kind=SymbolKind.CLASS contains
