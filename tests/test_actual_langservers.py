@@ -3,20 +3,21 @@ import functools
 import os
 import pprint
 import pathlib
+import pprint
+import queue
+import re
 import shutil
 import subprocess
 import sys
 import textwrap
-import re
 import threading
-import queue
 import time
+from urllib.parse import unquote
 
 import pytest
 from icecream import ic
 
 import sansio_lsp_client as lsp
-
 
 METHOD_COMPLETION = "completion"
 METHOD_RENAME = "rename"
@@ -75,9 +76,11 @@ class ThreadedServer:
         self.lsp_client = lsp.Client(
             process_id=os.getpid(),
             root_uri=root_uri,
-            workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")]
-            if set_workspace_folders
-            else None,
+            workspace_folders=(
+                [lsp.WorkspaceFolder(uri=self.root_uri, name="Root")]
+                if set_workspace_folders
+                else None
+            ),
             trace="verbose",
         )
         self.msgs = []
@@ -281,7 +284,7 @@ def start_server(langserver_name, project_root, file_contents):
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     tserver = ThreadedServer(
         process,
-        ic(project_root.as_uri()),
+        project_root.as_uri(),
         set_workspace_folders=langserver_name != "pyright",
     )
 
@@ -391,8 +394,8 @@ def check_that_langserver_works(langserver_name, tmp_path):
         # Initialized #####
         tserver.wait_for_message_of_type(lsp.Initialized)
 
-        if langserver_name == "pyright":
-            tserver.wait_for_message_of_type(lsp.RegisterCapabilityRequest).reply()
+        # if langserver_name == "pyright":
+        #     tserver.wait_for_message_of_type(lsp.RegisterCapabilityRequest).reply()
 
         tserver.lsp_client.did_open(
             lsp.TextDocumentItem(
@@ -406,7 +409,8 @@ def check_that_langserver_works(langserver_name, tmp_path):
         # Diagnostics #####
         diagnostics = tserver.wait_for_message_of_type(lsp.PublishDiagnostics)
         assert (
-            diagnostics.uri.casefold() == (project_root / filename).as_uri().casefold()
+            unquote(diagnostics.uri).casefold()
+            == unquote((project_root / filename).as_uri()).casefold()
         )
         diag_msgs = [diag.message for diag in diagnostics.diagnostics]
 
@@ -445,6 +449,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             assert completion_labels == [
                 "__doc__",
                 "do_foo",
+                "do_faa",
                 "do_bar",
                 "dont_write_bytecode",
             ]

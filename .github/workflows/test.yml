@@ -3,8 +3,10 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - "**"
   pull_request:
+    branches:
+      - "**"
 
 jobs:
   pytest:
@@ -33,12 +35,12 @@ jobs:
             chmod +x clangd_$VERSION/bin/clangd
           done
         # TODO: go fails to install
-#      - name: Install Go
-#        uses: actions/setup-go@v2
-#        with:
-#          go-version: 1.16.x
-#      - run: |
-#          cd tests/langservers && GOPATH="$(pwd)" GO111MODULE=on go get golang.org/x/tools/gopls@latest
+      #      - name: Install Go
+      #        uses: actions/setup-go@v2
+      #        with:
+      #          go-version: 1.16.x
+      #      - run: |
+      #          cd tests/langservers && GOPATH="$(pwd)" GO111MODULE=on go get golang.org/x/tools/gopls@latest
       - run: |
           pip install poetry && poetry install
       - run: |
