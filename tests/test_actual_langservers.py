@@ -1,6 +1,7 @@
 import contextlib
 import functools
 import os
+import pprint
 import pathlib
 import pprint
 import queue
@@ -14,6 +15,7 @@ import time
 from urllib.parse import unquote
 
 import pytest
+from icecream import ic
 
 import sansio_lsp_client as lsp
 
@@ -397,7 +399,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
         tserver.lsp_client.did_open(
             lsp.TextDocumentItem(
-                uri=(project_root / filename).as_uri(),
+                uri=ic((project_root / filename).as_uri()),
                 languageId=language_id,
                 text=file_contents[filename],
                 version=0,
@@ -414,6 +416,8 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
         if langserver_name == "pylsp":
             assert "undefined name 'do_'" in diag_msgs
+            assert "E302 expected 2 blank lines, found 0" in diag_msgs
+            assert "W292 no newline at end of file" in diag_msgs
         elif langserver_name == "pyright":
             assert diag_msgs == ['"do_" is not defined', "Expression value is unused"]
         elif langserver_name == "js":
