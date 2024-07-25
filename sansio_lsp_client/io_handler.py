@@ -73,6 +73,7 @@ def _make_response(
     return request
 
 
+# Example: "application/vscode-jsonrpc; charset=utf-8" --> ("application/vscode-jsonrpc", {"charset": "utf-8"})
 def _parse_content_type(header: str) -> tuple[str, dict[str, str]]:
     content_type, _, param_string = header.partition(";")
     content_type = content_type.strip().lower()
