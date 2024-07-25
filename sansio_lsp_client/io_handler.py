@@ -1,10 +1,12 @@
-import cgi
 import json
+import re
 import typing as t
 
 from pydantic import parse_obj_as
 
-from .structs import Request, Response, JSONDict, JSONList
+from .structs import JSONDict, JSONList, Request, Response
+
+_CONTENT_TYPE_PARAM_RE = re.compile(r'(\w+)\s*=\s*(?:(?:"([^"]*)")|([^;,\s]*))')
 
 
 def _make_headers(content_length: int, encoding: str = "utf-8") -> bytes:
@@ -71,6 +73,19 @@ def _make_response(
     return request
 
 
+# Example: "application/vscode-jsonrpc; charset=utf-8" --> ("application/vscode-jsonrpc", {"charset": "utf-8"})
+def _parse_content_type(header: str) -> tuple[str, dict[str, str]]:
+    content_type, _, param_string = header.partition(";")
+    content_type = content_type.strip().lower()
+
+    metadata = {
+        m.group(1).lower(): (m.group(2) or m.group(3))
+        for m in _CONTENT_TYPE_PARAM_RE.finditer(param_string)
+    }
+
+    return content_type, metadata
+
+
 # _parse_messages is kind of tricky.
 #
 # It used to work like this:
@@ -119,7 +134,7 @@ def _parse_one_message(
     assert set(headers.keys()) == {"content-type", "content-length"}
 
     # Content-Type and encoding.
-    content_type, metadata = cgi.parse_header(headers["content-type"])
+    content_type, metadata = _parse_content_type(headers["content-type"])
     assert content_type == "application/vscode-jsonrpc"
     encoding = metadata["charset"]
 
