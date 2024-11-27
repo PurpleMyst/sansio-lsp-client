@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import os
 import pprint
 import pathlib
 import shutil
@@ -12,6 +13,7 @@ import queue
 import time
 
 import pytest
+from icecream import ic
 
 import sansio_lsp_client as lsp
 
@@ -67,12 +69,15 @@ class ThreadedServer:
     that are not a response to a request.
     """
 
-    def __init__(self, process, root_uri):
+    def __init__(self, process, root_uri, *, set_workspace_folders=True):
         self.process = process
         self.root_uri = root_uri
         self.lsp_client = lsp.Client(
+            process_id=os.getpid(),
             root_uri=root_uri,
-            workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")],
+            workspace_folders=[lsp.WorkspaceFolder(uri=self.root_uri, name="Root")]
+            if set_workspace_folders
+            else None,
             trace="verbose",
         )
         self.msgs = []
@@ -117,7 +122,6 @@ class ThreadedServer:
                 if chunk is None:
                     break
 
-                # print(f"\nsending: {buf}\n")
                 self.process.stdin.write(chunk)
                 self.process.stdin.flush()
         except Exception as ex:
@@ -252,6 +256,12 @@ _clangd_10 = next(langserver_dir.glob("clangd_10.*/bin/clangd"), None)
 _clangd_11 = next(langserver_dir.glob("clangd_11.*/bin/clangd"), None)
 SERVER_COMMANDS = {
     "pylsp": [sys.executable, "-m", "pylsp"],
+    "pyright": [
+        langserver_dir
+        / f"node_modules/.bin/pyright-langserver{'.cmd' if sys.platform == 'win32' else ''}",
+        "--verbose",
+        "--stdio",
+    ],
     "js": [langserver_dir / "node_modules/.bin/javascript-typescript-stdio"],
     "clangd_10": [_clangd_10],
     "clangd_11": [_clangd_11],
@@ -269,7 +279,11 @@ def start_server(langserver_name, project_root, file_contents):
         path.write_text(text)
 
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    tserver = ThreadedServer(process, project_root.as_uri())
+    tserver = ThreadedServer(
+        process,
+        ic(project_root.as_uri()),
+        set_workspace_folders=langserver_name != "pyright",
+    )
 
     try:
         yield (tserver, project_root)
@@ -282,7 +296,7 @@ def start_server(langserver_name, project_root, file_contents):
 
 
 def check_that_langserver_works(langserver_name, tmp_path):
-    if langserver_name == "pylsp":
+    if langserver_name in {"pylsp", "pyright"}:
         file_contents = {
             "foo.py": textwrap.dedent(
                 f"""\
@@ -376,9 +390,13 @@ def check_that_langserver_works(langserver_name, tmp_path):
     ):
         # Initialized #####
         tserver.wait_for_message_of_type(lsp.Initialized)
+
+        if langserver_name == "pyright":
+            tserver.wait_for_message_of_type(lsp.RegisterCapabilityRequest).reply()
+
         tserver.lsp_client.did_open(
             lsp.TextDocumentItem(
-                uri=(project_root / filename).as_uri(),
+                uri=ic((project_root / filename).as_uri()),
                 languageId=language_id,
                 text=file_contents[filename],
                 version=0,
@@ -387,11 +405,17 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
         # Diagnostics #####
         diagnostics = tserver.wait_for_message_of_type(lsp.PublishDiagnostics)
-        assert diagnostics.uri == (project_root / filename).as_uri()
+        assert (
+            diagnostics.uri.casefold() == (project_root / filename).as_uri().casefold()
+        )
         diag_msgs = [diag.message for diag in diagnostics.diagnostics]
 
         if langserver_name == "pylsp":
             assert "undefined name 'do_'" in diag_msgs
+            assert "E302 expected 2 blank lines, found 0" in diag_msgs
+            assert "W292 no newline at end of file" in diag_msgs
+        elif langserver_name == "pyright":
+            assert diag_msgs == ['"do_" is not defined', "Expression value is unused"]
         elif langserver_name == "js":
             assert diag_msgs == ["';' expected."]
         elif langserver_name in ("clangd_10", "clangd_11"):
@@ -403,7 +427,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
         elif langserver_name == "gopls":
             assert diag_msgs == ["expected ';', found asdf"]
         else:
-            raise ValueError(langserver_name)
+            raise ValueError(f"{langserver_name}: {pprint.pformat(diag_msgs)}")
 
         do_method = functools.partial(
             tserver.do_method,
@@ -417,13 +441,20 @@ def check_that_langserver_works(langserver_name, tmp_path):
 
         if langserver_name == "pylsp":
             assert completion_labels == ["do_bar()", "do_faa()", "do_foo()"]
+        elif langserver_name == "pyright":
+            assert completion_labels == [
+                "__doc__",
+                "do_foo",
+                "do_bar",
+                "dont_write_bytecode",
+            ]
         elif langserver_name in ("js", "gopls"):
             assert "doSomethingWithFoo" in completion_labels
         elif langserver_name in ("clangd_10", "clangd_11"):
             assert " do_foo()" in completion_labels
             assert " do_bar(char x, long y)" in completion_labels
         else:
-            raise ValueError(langserver_name)
+            raise ValueError(f"{langserver_name}: {pprint.pformat(completion_labels)}")
 
         if langserver_name == "pylsp":
             # Hover #####
@@ -453,7 +484,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
                 else definitions.result
             )
             assert isinstance(item, lsp.Location)  # TODO: could also be LocationLink
-            assert item.uri == (project_root / filename).as_uri()
+            assert item.uri.casefold() == (project_root / filename).as_uri().casefold()
             assert (
                 METHOD_DEFINITION
                 in file_contents["foo.py"].splitlines()[item.range.start.line]
@@ -462,7 +493,7 @@ def check_that_langserver_works(langserver_name, tmp_path):
             # references #####
             [item] = do_method(METHOD_REFERENCES).result
             assert isinstance(item, lsp.Location)
-            assert item.uri == (project_root / filename).as_uri()
+            assert item.uri.casefold() == (project_root / filename).as_uri().casefold()
             assert (
                 METHOD_REFERENCES
                 in file_contents["foo.py"].splitlines()[item.range.start.line]
@@ -521,7 +552,10 @@ def check_that_langserver_works(langserver_name, tmp_path):
             # declaration #####
             declaration = do_method(METHOD_DECLARATION)
             assert len(declaration.result) == 1
-            assert declaration.result[0].uri == (project_root / filename).as_uri()
+            assert (
+                declaration.result[0].uri.casefold()
+                == (project_root / filename).as_uri().casefold()
+            )
 
         if langserver_name == "gopls":
             # implementation #####
@@ -532,11 +566,22 @@ def check_that_langserver_works(langserver_name, tmp_path):
             # typeDefinition #####
             typedef = do_method(METHOD_TYPEDEF)
             assert len(typedef.result) == 1
-            assert typedef.result[0].uri == (project_root / filename).as_uri()
+            assert (
+                typedef.result[0].uri.casefold()
+                == (project_root / filename).as_uri().casefold()
+            )
 
 
 def test_pylsp(tmp_path):
     check_that_langserver_works("pylsp", tmp_path)
+
+
+@pytest.mark.skipif(
+    not (langserver_dir / "node_modules/.bin/pyright-langserver").exists(),
+    reason="pyright-langserver not found in node_modules",
+)
+def test_pyright(tmp_path):
+    check_that_langserver_works("pyright", tmp_path)
 
 
 @pytest.mark.skipif(
