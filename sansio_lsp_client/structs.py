@@ -409,7 +409,9 @@ class DocumentSymbol(BaseModel):
     tags: t.Optional[t.List[SymbolTag]] = None
     deprecated: t.Optional[bool] = None
     range: Range = Field(..., validate_default=True)
-    selectionRange: Range = Field(..., validate_default=True)  # Example: symbol.selectionRange.start.as_tuple()
+    selectionRange: Range = Field(
+        ..., validate_default=True
+    )  # Example: symbol.selectionRange.start.as_tuple()
     # https://stackoverflow.com/questions/36193540
     children: t.Optional[t.List["DocumentSymbol"]] = None
 
