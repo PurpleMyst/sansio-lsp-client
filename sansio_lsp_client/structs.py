@@ -34,6 +34,7 @@ class MessageType(enum.IntEnum):
     WARNING = 2
     INFO = 3
     LOG = 4
+    DEBUG = 5
 
 
 class MessageActionItem(BaseModel):

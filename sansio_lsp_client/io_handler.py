@@ -113,14 +113,14 @@ def _parse_one_message(
     response_buf: bytearray,
 ) -> t.Optional[t.Iterable[t.Union[Request, Response]]]:
     """Parse a single JSON-RPC message from a bytearray.
-    
+
     Args:
         response_buf: A bytearray containing JSON-RPC messages.
-        
+
     Returns:
         None if there's not enough data for a complete message,
         or an iterable of Request or Response objects if a message was parsed successfully.
-        
+
     Note: This function modifies response_buf by removing parsed data."""
     if b"\r\n\r\n" not in response_buf:
         return None
@@ -189,14 +189,14 @@ def _parse_one_message(
 
 def _parse_messages(response_buf: bytearray) -> t.Iterator[t.Union[Response, Request]]:
     """Parse all complete JSON-RPC messages from a bytearray.
-    
+
     Args:
         response_buf: A bytearray containing zero or more JSON-RPC messages.
-        
+
     Returns:
         An iterator yielding Request or Response objects for each complete message.
         Partial messages at the end of the buffer are left for future parsing.
-        
+
     Note: This function modifies response_buf by removing parsed data."""
     while True:
         parsed = _parse_one_message(response_buf)

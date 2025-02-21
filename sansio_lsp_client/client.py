@@ -250,12 +250,15 @@ class Client:
                     try:
                         completion_list = CompletionList.model_validate(response.result)
                     except ValidationError:
-                        if isinstance(response.result, dict) and "items" in response.result:
+                        if (
+                            isinstance(response.result, dict)
+                            and "items" in response.result
+                        ):
                             completion_list = CompletionList(
                                 isIncomplete=False,
-                                items=TypeAdapter(t.List[CompletionItem]).validate_python(
-                                    response.result["items"]
-                                ),
+                                items=TypeAdapter(
+                                    t.List[CompletionItem]
+                                ).validate_python(response.result["items"]),
                             )
 
                 event = Completion(
@@ -304,9 +307,13 @@ class Client:
                             TextDocumentEdit.model_validate(change)
                             for change in response.result["documentChanges"]
                         ]
-                        event = WorkspaceEdit(message_id=response.id, documentChanges=document_changes)
+                        event = WorkspaceEdit(
+                            message_id=response.id, documentChanges=document_changes
+                        )
                     elif "changes" in response.result:
-                        event = WorkspaceEdit(message_id=response.id, changes=response.result["changes"])
+                        event = WorkspaceEdit(
+                            message_id=response.id, changes=response.result["changes"]
+                        )
                     else:
                         event = WorkspaceEdit(message_id=response.id)
                 else:

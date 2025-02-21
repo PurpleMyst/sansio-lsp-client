@@ -99,7 +99,11 @@ class WorkDoneProgressCreate(ServerRequest):
 
 class Progress(ServerNotification):
     token: ProgressToken
-    value: t.Union[WorkDoneProgressBeginValue, WorkDoneProgressReportValue, WorkDoneProgressEndValue]
+    value: t.Union[
+        WorkDoneProgressBeginValue,
+        WorkDoneProgressReportValue,
+        WorkDoneProgressEndValue,
+    ]
 
 
 class WorkDoneProgress(Progress):
