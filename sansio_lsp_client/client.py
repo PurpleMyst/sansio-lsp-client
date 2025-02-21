@@ -1,7 +1,7 @@
 import enum
 import typing as t
 
-from pydantic import ValidationError, parse_obj_as
+from pydantic import ValidationError, TypeAdapter
 
 from .events import (
     Completion,
@@ -176,7 +176,7 @@ class Client:
                 "workspaceFolders": (
                     None
                     if workspace_folders is None
-                    else [f.dict() for f in workspace_folders]
+                    else [f.model_dump() for f in workspace_folders]
                 ),
                 "trace": trace,
                 "capabilities": CAPABILITIES,
@@ -222,7 +222,7 @@ class Client:
         request = self._unanswered_requests.pop(response.id)
 
         if response.error is not None:
-            err = ResponseError.parse_obj(response.error)
+            err = ResponseError.model_validate(response.error)
             err.message_id = response.id
             return err
 
@@ -234,7 +234,7 @@ class Client:
                 self._send_notification(
                     "initialized", params={}
                 )  # params=None doesn't work with gopls
-                event = Initialized.parse_obj(response.result)
+                event = Initialized.model_validate(response.result)
                 self._state = ClientState.NORMAL
 
             case "shutdown":
@@ -246,12 +246,12 @@ class Client:
                 completion_list = None
 
                 try:
-                    completion_list = CompletionList.parse_obj(response.result)
+                    completion_list = CompletionList.model_validate(response.result)
                 except ValidationError:
                     try:
                         completion_list = CompletionList(
                             isIncomplete=False,
-                            items=parse_obj_as(t.List[CompletionItem], response.result),
+                            items=TypeAdapter(t.List[CompletionItem]).validate_python(response.result["items"]),
                         )
                     except ValidationError:
                         assert response.result is None
@@ -262,63 +262,60 @@ class Client:
 
             case "textDocument/willSaveWaitUntil":
                 event = WillSaveWaitUntilEdits(
-                    edits=parse_obj_as(t.List[TextEdit], response.result)
+                    edits=TypeAdapter(t.List[TextEdit]).validate_python(response.result)
                 )
 
             case "textDocument/hover":
                 if response.result is not None:
-                    event = Hover.parse_obj(response.result)
+                    event = Hover.model_validate(response.result)
                 else:
                     event = Hover(contents=[])  # null response
                 event.message_id = response.id
 
             case "textDocument/foldingRange":
-                event = parse_obj_as(MFoldingRanges, response)
-                event.message_id = response.id
+                event = MFoldingRanges(message_id=response.id, result=response.result if response.result is not None else [])
 
             case "textDocument/signatureHelp":
                 if response.result is not None:
-                    event = SignatureHelp.parse_obj(response.result)
+                    event = SignatureHelp.model_validate(response.result)
                 else:
                     event = SignatureHelp(signatures=[])  # null response
                 event.message_id = response.id
 
             case "textDocument/documentSymbol":
-                event = parse_obj_as(MDocumentSymbols, response)
-                event.message_id = response.id
+                event = MDocumentSymbols(message_id=response.id, result=response.result if response.result is not None else [])
 
             case "textDocument/inlayHint":
-                event = parse_obj_as(MInlayHints, response)
+                event = TypeAdapter(MInlayHints).validate_python(response)
                 event.message_id = response.id
 
             case "textDocument/rename":
-                event = parse_obj_as(WorkspaceEdit, response.result)
-                event.message_id = response.id
+                event = WorkspaceEdit(message_id=response.id, **response.result)
 
             # GOTOs
             case "textDocument/definition":
-                event = parse_obj_as(Definition, response)
+                event = TypeAdapter(Definition).validate_python({"result": response.result})
                 event.message_id = response.id
 
             case "textDocument/references":
-                event = parse_obj_as(References, response)
+                event = TypeAdapter(References).validate_python({"result": response.result})
             case "textDocument/implementation":
-                event = parse_obj_as(Implementation, response)
+                event = TypeAdapter(Implementation).validate_python({"result": response.result})
             case "textDocument/declaration":
-                event = parse_obj_as(Declaration, response)
+                event = TypeAdapter(Declaration).validate_python({"result": response.result})
             case "textDocument/typeDefinition":
-                event = parse_obj_as(TypeDefinition, response)
+                event = TypeAdapter(TypeDefinition).validate_python({"result": response.result})
 
             case "textDocument/prepareCallHierarchy":
-                event = parse_obj_as(MCallHierarchItems, response)
+                event = TypeAdapter(MCallHierarchItems).validate_python({"result": response.result})
 
             case "textDocument/formatting" | "textDocument/rangeFormatting":
-                event = parse_obj_as(DocumentFormatting, response)
+                event = TypeAdapter(DocumentFormatting).validate_python({"result": response.result})
                 event.message_id = response.id
 
             # WORKSPACE
             case "workspace/symbol":
-                event = parse_obj_as(MWorkspaceSymbols, response)
+                event = TypeAdapter(MWorkspaceSymbols).validate_python({"result": response.result})
 
             case _:
                 raise NotImplementedError((response, request))
@@ -329,13 +326,13 @@ class Client:
     def _handle_request(self, request: Request) -> Event:
         def parse_request(event_cls: t.Type[Event]) -> Event:
             if issubclass(event_cls, ServerRequest):
-                event = parse_obj_as(event_cls, request.params)
+                event = TypeAdapter(event_cls).validate_python(request.params)
                 assert request.id is not None
                 event._id = request.id
                 event._client = self
                 return event
             elif issubclass(event_cls, ServerNotification):
-                return parse_obj_as(event_cls, request.params)
+                return TypeAdapter(event_cls).validate_python(request.params)
             else:
                 raise TypeError(
                     "`event_cls` must be a subclass of ServerRequest"
@@ -409,7 +406,7 @@ class Client:
     def did_open(self, text_document: TextDocumentItem) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(
-            method="textDocument/didOpen", params={"textDocument": text_document.dict()}
+            method="textDocument/didOpen", params={"textDocument": text_document.model_dump()}
         )
 
     def did_change(
@@ -421,8 +418,8 @@ class Client:
         self._send_notification(
             method="textDocument/didChange",
             params={
-                "textDocument": text_document.dict(),
-                "contentChanges": [evt.dict() for evt in content_changes],
+                "textDocument": text_document.model_dump(),
+                "contentChanges": [evt.model_dump() for evt in content_changes],
             },
         )
 
@@ -438,7 +435,7 @@ class Client:
         assert self._state == ClientState.NORMAL
         self._send_notification(
             method="textDocument/willSave",
-            params={"textDocument": text_document.dict(), "reason": reason.value},
+            params={"textDocument": text_document.model_dump(), "reason": reason.value},
         )
 
     def will_save_wait_until(
@@ -447,14 +444,14 @@ class Client:
         assert self._state == ClientState.NORMAL
         self._send_request(
             method="textDocument/willSaveWaitUntil",
-            params={"textDocument": text_document.dict(), "reason": reason.value},
+            params={"textDocument": text_document.model_dump(), "reason": reason.value},
         )
 
     def did_save(
         self, text_document: TextDocumentIdentifier, text: t.Optional[str] = None
     ) -> None:
         assert self._state == ClientState.NORMAL
-        params: t.Dict[str, t.Any] = {"textDocument": text_document.dict()}
+        params: t.Dict[str, t.Any] = {"textDocument": text_document.model_dump()}
         if text is not None:
             params["text"] = text
         self._send_notification(method="textDocument/didSave", params=params)
@@ -463,7 +460,7 @@ class Client:
         assert self._state == ClientState.NORMAL
         self._send_notification(
             method="textDocument/didClose",
-            params={"textDocument": text_document.dict()},
+            params={"textDocument": text_document.model_dump()},
         )
 
     def did_change_workspace_folders(
@@ -471,8 +468,8 @@ class Client:
     ) -> None:
         assert self._state == ClientState.NORMAL
         params = {
-            "added": [f.dict() for f in added],
-            "removed": [f.dict() for f in removed],
+            "added": [f.model_dump() for f in added],
+            "removed": [f.model_dump() for f in removed],
         }
         self._send_notification(
             method="workspace/didChangeWorkspaceFolders", params=params
@@ -485,9 +482,9 @@ class Client:
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}
-        params.update(text_document_position.dict())
+        params.update(text_document_position.model_dump())
         if context is not None:
-            params.update(context.dict())
+            params.update(context.model_dump())
         return self._send_request(method="textDocument/completion", params=params)
 
     def rename(
@@ -497,59 +494,59 @@ class Client:
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {}
-        params.update(text_document_position.dict())
+        params.update(text_document_position.model_dump())
         params["newName"] = new_name
         return self._send_request(method="textDocument/rename", params=params)
 
     def hover(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/hover", params=text_document_position.dict()
+            method="textDocument/hover", params=text_document_position.model_dump()
         )
 
     def folding_range(self, text_document: TextDocumentIdentifier) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/foldingRange",
-            params={"textDocument": text_document.dict()},
+            params={"textDocument": text_document.model_dump()},
         )
 
     def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/signatureHelp", params=text_document_position.dict()
+            method="textDocument/signatureHelp", params=text_document_position.model_dump()
         )
 
     def definition(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/definition", params=text_document_position.dict()
+            method="textDocument/definition", params=text_document_position.model_dump()
         )
 
     def declaration(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/declaration", params=text_document_position.dict()
+            method="textDocument/declaration", params=text_document_position.model_dump()
         )
 
     def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/inlayHint",
-            params={"textDocument": text_document.dict(), "range": range.dict()},
+            params={"textDocument": text_document.model_dump(), "range": range.model_dump()},
         )
 
     def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/typeDefinition", params=text_document_position.dict()
+            method="textDocument/typeDefinition", params=text_document_position.model_dump()
         )
 
     def references(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         params = {
             "context": {"includeDeclaration": True},
-            **text_document_position.dict(),
+            **text_document_position.model_dump(),
         }
         return self._send_request(method="textDocument/references", params=params)
 
@@ -558,13 +555,13 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/prepareCallHierarchy",
-            params=text_document_position.dict(),
+            params=text_document_position.model_dump(),
         )
 
     def implementation(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/implementation", params=text_document_position.dict()
+            method="textDocument/implementation", params=text_document_position.model_dump()
         )
 
     def workspace_symbol(self, query: str = "") -> int:
@@ -575,14 +572,14 @@ class Client:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/documentSymbol",
-            params={"textDocument": text_document.dict()},
+            params={"textDocument": text_document.model_dump()},
         )
 
     def formatting(
         self, text_document: TextDocumentIdentifier, options: FormattingOptions
     ) -> int:
         assert self._state == ClientState.NORMAL
-        params = {"textDocument": text_document.dict(), "options": options.dict()}
+        params = {"textDocument": text_document.model_dump(), "options": options.model_dump()}
         return self._send_request(method="textDocument/formatting", params=params)
 
     def rangeFormatting(
@@ -593,8 +590,8 @@ class Client:
     ) -> int:
         assert self._state == ClientState.NORMAL
         params = {
-            "textDocument": text_document.dict(),
-            "range": range.dict(),
-            "options": options.dict(),
+            "textDocument": text_document.model_dump(),
+            "range": range.model_dump(),
+            "options": options.model_dump(),
         }
         return self._send_request(method="textDocument/rangeFormatting", params=params)

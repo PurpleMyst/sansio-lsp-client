@@ -2,7 +2,7 @@ import json
 import re
 import typing as t
 
-from pydantic import parse_obj_as
+from pydantic import TypeAdapter
 
 from .structs import JSONDict, JSONList, Request, Response
 
@@ -166,7 +166,7 @@ def _parse_one_message(
         data: JSONDict,
     ) -> t.Union[Request, Response]:
         del data["jsonrpc"]
-        return parse_obj_as(t.Union[Request, Response], data)  # type: ignore
+        return TypeAdapter(t.Union[Request, Response]).validate_python(data)
 
     content = json.loads(raw_content.decode(encoding))
 
