@@ -26,7 +26,6 @@ from .structs import (
     DocumentSymbol,
     WorkspaceFolder,
     ProgressToken,
-    ProgressValue,
     WorkDoneProgressBeginValue,
     WorkDoneProgressReportValue,
     WorkDoneProgressEndValue,
@@ -44,9 +43,7 @@ class ResponseError(Event):
     message_id: t.Optional[Id] = None
     code: int
     message: str
-    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict, None]] = (
-        None
-    )
+    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict]] = None
 
 
 class ServerRequest(Event):
@@ -102,7 +99,7 @@ class WorkDoneProgressCreate(ServerRequest):
 
 class Progress(ServerNotification):
     token: ProgressToken
-    value: ProgressValue
+    value: t.Union[WorkDoneProgressBeginValue, WorkDoneProgressReportValue, WorkDoneProgressEndValue]
 
 
 class WorkDoneProgress(Progress):
@@ -166,7 +163,7 @@ class Definition(Event):
 
 class WorkspaceEdit(Event):
     message_id: t.Optional[Id] = None
-    changes: t.Optional[t.Dict[str, TextEdit]] = None
+    changes: t.Optional[t.Dict[str, t.List[TextEdit]]] = None
     documentChanges: t.Optional[t.List[TextDocumentEdit]] = None
 
 
@@ -241,5 +238,5 @@ class WorkspaceFolders(ServerRequest):
 class ConfigurationRequest(ServerRequest):
     items: t.List[ConfigurationItem]
 
-    def reply(self, result: t.List[t.Any] = []) -> None:
+    def reply(self, result: t.List[t.Any]) -> None:
         self._client._send_response(id=self._id, result=result)
