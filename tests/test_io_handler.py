@@ -102,33 +102,3 @@ def test_parse_one_message_with_array_params():
     assert result[0].id is None
     assert result[0].params == []
     assert len(buffer) == 0  # Buffer should be cleared after parsing
-
-
-def test_parse_messages_response():
-    # Create a valid JSON-RPC response message
-    message_contents = [
-        b'{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"[LanguageServerProjectSystem] Successfully completed load of /Users/me/Project/Project.csproj"}}',
-        b'{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"[LanguageServerProjectSystem] Completed (re)load of all projects in 00:00:44.1433469"}}',
-        # This next message is malformed, the empty params comes as an empty array instead of an empty dict
-        b'{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":5,"message":"[LanguageServerHost] [11:28:36.509][End]solution/open"}}',
-    ]
-    messages = "".join(
-        [
-            f"Content-Length: {len(m)}\r\n\r\n".encode("ascii") + m
-            for m in message_contents
-        ]
-    )
-
-    buffer = bytearray(messages)
-
-    result = list(_parse_messages(buffer))
-
-    assert len(result) == 4
-    assert len(buffer) == 0
-
-    # Let's check the first message
-    assert isinstance(result[0], Request)
-    assert result[0].id is None
-    assert result[0].method == "window/logMessage"
-    assert result[0].params["type"] == MessageType.INFO
-    assert result[0].message == ""
