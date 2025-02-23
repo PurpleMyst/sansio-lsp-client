@@ -135,7 +135,7 @@ class TextDocumentContentChangeEvent(BaseModel):
     def whole_document_change(
         cls, change_text: str
     ) -> "TextDocumentContentChangeEvent":
-        return cls(text=change_text)
+        return cls(text=change_text, range=None, rangeLength=None)
 
 
 class TextDocumentPosition(BaseModel):

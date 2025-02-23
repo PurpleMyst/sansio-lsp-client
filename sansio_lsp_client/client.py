@@ -250,14 +250,17 @@ class Client:
                     completion_list = CompletionList.model_validate(response.result)
                 except ValidationError:
                     try:
-                        completion_list = CompletionList(
-                            isIncomplete=False,
-                            items=TypeAdapter(t.List[CompletionItem]).validate_python(
-                                response.result["items"]
-                            ),
-                        )
+                        if isinstance(response.result, dict) and "items" in response.result:
+                            completion_list = CompletionList(
+                                isIncomplete=False,
+                                items=TypeAdapter(t.List[CompletionItem]).validate_python(
+                                    response.result["items"]
+                                ),
+                            )
+                        else:
+                            completion_list = None
                     except ValidationError:
-                        assert response.result is None
+                        completion_list = None
 
                 event = Completion(
                     message_id=response.id, completion_list=completion_list
@@ -299,7 +302,10 @@ class Client:
                 event.message_id = response.id
 
             case "textDocument/rename":
-                event = WorkspaceEdit(message_id=response.id, **response.result)
+                params = response.result if response.result is not None else {}
+                if not isinstance(params, dict):
+                    params = {}
+                event = WorkspaceEdit(message_id=response.id, **params)
 
             # GOTOs
             case "textDocument/definition":
