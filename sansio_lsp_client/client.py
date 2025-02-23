@@ -148,7 +148,7 @@ class Client:
         root_uri: t.Optional[str] = None,
         workspace_folders: t.Optional[t.List[WorkspaceFolder]] = None,
         trace: str = "off",
-        capabilities: t.Optional[JSONDict] = None
+        capabilities: t.Optional[JSONDict] = None,
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
 
@@ -252,7 +252,9 @@ class Client:
                     try:
                         completion_list = CompletionList(
                             isIncomplete=False,
-                            items=TypeAdapter(t.List[CompletionItem]).validate_python(response.result["items"]),
+                            items=TypeAdapter(t.List[CompletionItem]).validate_python(
+                                response.result["items"]
+                            ),
                         )
                     except ValidationError:
                         assert response.result is None
@@ -274,7 +276,10 @@ class Client:
                 event.message_id = response.id
 
             case "textDocument/foldingRange":
-                event = MFoldingRanges(message_id=response.id, result=response.result if response.result is not None else [])
+                event = MFoldingRanges(
+                    message_id=response.id,
+                    result=response.result if response.result is not None else [],
+                )
 
             case "textDocument/signatureHelp":
                 if response.result is not None:
@@ -284,7 +289,10 @@ class Client:
                 event.message_id = response.id
 
             case "textDocument/documentSymbol":
-                event = MDocumentSymbols(message_id=response.id, result=response.result if response.result is not None else [])
+                event = MDocumentSymbols(
+                    message_id=response.id,
+                    result=response.result if response.result is not None else [],
+                )
 
             case "textDocument/inlayHint":
                 event = TypeAdapter(MInlayHints).validate_python(response)
@@ -295,28 +303,44 @@ class Client:
 
             # GOTOs
             case "textDocument/definition":
-                event = TypeAdapter(Definition).validate_python({"result": response.result})
+                event = TypeAdapter(Definition).validate_python(
+                    {"result": response.result}
+                )
                 event.message_id = response.id
 
             case "textDocument/references":
-                event = TypeAdapter(References).validate_python({"result": response.result})
+                event = TypeAdapter(References).validate_python(
+                    {"result": response.result}
+                )
             case "textDocument/implementation":
-                event = TypeAdapter(Implementation).validate_python({"result": response.result})
+                event = TypeAdapter(Implementation).validate_python(
+                    {"result": response.result}
+                )
             case "textDocument/declaration":
-                event = TypeAdapter(Declaration).validate_python({"result": response.result})
+                event = TypeAdapter(Declaration).validate_python(
+                    {"result": response.result}
+                )
             case "textDocument/typeDefinition":
-                event = TypeAdapter(TypeDefinition).validate_python({"result": response.result})
+                event = TypeAdapter(TypeDefinition).validate_python(
+                    {"result": response.result}
+                )
 
             case "textDocument/prepareCallHierarchy":
-                event = TypeAdapter(MCallHierarchItems).validate_python({"result": response.result})
+                event = TypeAdapter(MCallHierarchItems).validate_python(
+                    {"result": response.result}
+                )
 
             case "textDocument/formatting" | "textDocument/rangeFormatting":
-                event = TypeAdapter(DocumentFormatting).validate_python({"result": response.result})
+                event = TypeAdapter(DocumentFormatting).validate_python(
+                    {"result": response.result}
+                )
                 event.message_id = response.id
 
             # WORKSPACE
             case "workspace/symbol":
-                event = TypeAdapter(MWorkspaceSymbols).validate_python({"result": response.result})
+                event = TypeAdapter(MWorkspaceSymbols).validate_python(
+                    {"result": response.result}
+                )
 
             case _:
                 raise NotImplementedError((response, request))
@@ -408,7 +432,8 @@ class Client:
     def did_open(self, text_document: TextDocumentItem) -> None:
         assert self._state == ClientState.NORMAL
         self._send_notification(
-            method="textDocument/didOpen", params={"textDocument": text_document.model_dump()}
+            method="textDocument/didOpen",
+            params={"textDocument": text_document.model_dump()},
         )
 
     def did_change(
@@ -516,7 +541,8 @@ class Client:
     def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/signatureHelp", params=text_document_position.model_dump()
+            method="textDocument/signatureHelp",
+            params=text_document_position.model_dump(),
         )
 
     def definition(self, text_document_position: TextDocumentPosition) -> int:
@@ -528,20 +554,25 @@ class Client:
     def declaration(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/declaration", params=text_document_position.model_dump()
+            method="textDocument/declaration",
+            params=text_document_position.model_dump(),
         )
 
     def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/inlayHint",
-            params={"textDocument": text_document.model_dump(), "range": range.model_dump()},
+            params={
+                "textDocument": text_document.model_dump(),
+                "range": range.model_dump(),
+            },
         )
 
     def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/typeDefinition", params=text_document_position.model_dump()
+            method="textDocument/typeDefinition",
+            params=text_document_position.model_dump(),
         )
 
     def references(self, text_document_position: TextDocumentPosition) -> int:
@@ -563,7 +594,8 @@ class Client:
     def implementation(self, text_document_position: TextDocumentPosition) -> int:
         assert self._state == ClientState.NORMAL
         return self._send_request(
-            method="textDocument/implementation", params=text_document_position.model_dump()
+            method="textDocument/implementation",
+            params=text_document_position.model_dump(),
         )
 
     def workspace_symbol(self, query: str = "") -> int:
@@ -581,7 +613,10 @@ class Client:
         self, text_document: TextDocumentIdentifier, options: FormattingOptions
     ) -> int:
         assert self._state == ClientState.NORMAL
-        params = {"textDocument": text_document.model_dump(), "options": options.model_dump()}
+        params = {
+            "textDocument": text_document.model_dump(),
+            "options": options.model_dump(),
+        }
         return self._send_request(method="textDocument/formatting", params=params)
 
     def rangeFormatting(

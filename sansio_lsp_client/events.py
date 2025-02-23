@@ -44,7 +44,9 @@ class ResponseError(Event):
     message_id: t.Optional[Id] = None
     code: int
     message: str
-    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict, None]] = None
+    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict, None]] = (
+        None
+    )
 
 
 class ServerRequest(Event):
