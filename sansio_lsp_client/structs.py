@@ -20,7 +20,7 @@ ProgressToken = t.Union[int, str]
 class Request(BaseModel):
     method: str
     id: t.Optional[Id] = None
-    params: t.Optional[JSONDict] = None
+    params: t.Optional[t.Union[t.List[t.Any], JSONDict]] = None
 
 
 class Response(BaseModel):

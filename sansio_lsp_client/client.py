@@ -148,6 +148,7 @@ class Client:
         root_uri: t.Optional[str] = None,
         workspace_folders: t.Optional[t.List[WorkspaceFolder]] = None,
         trace: str = "off",
+        capabilities: t.Optional[JSONDict] = None
     ) -> None:
         self._state = ClientState.NOT_INITIALIZED
 
@@ -179,7 +180,7 @@ class Client:
                     else [f.model_dump() for f in workspace_folders]
                 ),
                 "trace": trace,
-                "capabilities": CAPABILITIES,
+                "capabilities": capabilities or CAPABILITIES,
             },
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
@@ -358,6 +359,7 @@ class Client:
 
         elif request.method == "$/progress":
             assert request.params is not None
+            assert isinstance(request.params, dict)
             kind = MWorkDoneProgressKind(request.params["value"]["kind"])
             if kind == MWorkDoneProgressKind.BEGIN:
                 return parse_request(WorkDoneProgressBegin)
