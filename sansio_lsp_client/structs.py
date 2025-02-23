@@ -34,6 +34,7 @@ class MessageType(enum.IntEnum):
     WARNING = 2
     INFO = 3
     LOG = 4
+    DEBUG = 5
 
 
 class MessageActionItem(BaseModel):
@@ -135,7 +136,7 @@ class TextDocumentContentChangeEvent(BaseModel):
     def whole_document_change(
         cls, change_text: str
     ) -> "TextDocumentContentChangeEvent":
-        return cls(text=change_text)
+        return cls(text=change_text, range=None, rangeLength=None)
 
 
 class TextDocumentPosition(BaseModel):
@@ -409,7 +410,9 @@ class DocumentSymbol(BaseModel):
     tags: t.Optional[t.List[SymbolTag]] = None
     deprecated: t.Optional[bool] = None
     range: Range = Field(..., validate_default=True)
-    selectionRange: Range = Field(..., validate_default=True)  # Example: symbol.selectionRange.start.as_tuple()
+    selectionRange: Range = Field(
+        ..., validate_default=True
+    )  # Example: symbol.selectionRange.start.as_tuple()
     # https://stackoverflow.com/questions/36193540
     children: t.Optional[t.List["DocumentSymbol"]] = None
 
