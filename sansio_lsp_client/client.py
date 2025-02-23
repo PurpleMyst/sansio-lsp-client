@@ -54,6 +54,7 @@ from .structs import (
     Response,
     SymbolKind,
     TextDocumentContentChangeEvent,
+    TextDocumentEdit,
     TextDocumentIdentifier,
     TextDocumentItem,
     TextDocumentPosition,
@@ -73,7 +74,7 @@ class ClientState(enum.Enum):
     EXITED = enum.auto()
 
 
-CAPABILITIES = {
+CAPABILITIES: JSONDict = {
     "textDocument": {
         "synchronization": {
             "didSave": True,
@@ -196,8 +197,8 @@ class Client:
             and self._state != ClientState.WAITING_FOR_INITIALIZED
         )
 
-    def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> int:
-        id = self._id_counter
+    def _send_request(self, method: str, params: t.Optional[JSONDict] = None) -> Id:
+        id: Id = self._id_counter
         self._id_counter += 1
 
         self._send_buf += _make_request(method=method, params=params, id=id)
@@ -211,7 +212,7 @@ class Client:
 
     def _send_response(
         self,
-        id: int | str,
+        id: Id,
         result: t.Optional[t.Union[JSONDict, JSONList]] = None,
         error: t.Optional[JSONDict] = None,
     ) -> None:
@@ -374,32 +375,54 @@ class Client:
                 )
 
         if request.method == "workspace/workspaceFolders":
-            return parse_request(WorkspaceFolders)
+            event = parse_request(WorkspaceFolders)
+            assert isinstance(event, WorkspaceFolders)
+            return event
         elif request.method == "workspace/configuration":
-            return parse_request(ConfigurationRequest)
+            event = parse_request(ConfigurationRequest)
+            assert isinstance(event, ConfigurationRequest)
+            return event
         elif request.method == "window/showMessage":
-            return parse_request(ShowMessage)
+            event = parse_request(ShowMessage)
+            assert isinstance(event, ShowMessage)
+            return event
         elif request.method == "window/showMessageRequest":
-            return parse_request(ShowMessageRequest)
+            event = parse_request(ShowMessageRequest)
+            assert isinstance(event, ShowMessageRequest)
+            return event
         elif request.method == "window/logMessage":
-            return parse_request(LogMessage)
+            event = parse_request(LogMessage)
+            assert isinstance(event, LogMessage)
+            return event
         elif request.method == "textDocument/publishDiagnostics":
-            return parse_request(PublishDiagnostics)
+            event = parse_request(PublishDiagnostics)
+            assert isinstance(event, PublishDiagnostics)
+            return event
         elif request.method == "window/workDoneProgress/create":
-            return parse_request(WorkDoneProgressCreate)
+            event = parse_request(WorkDoneProgressCreate)
+            assert isinstance(event, WorkDoneProgressCreate)
+            return event
         elif request.method == "client/registerCapability":
-            return parse_request(RegisterCapabilityRequest)
+            event = parse_request(RegisterCapabilityRequest)
+            assert isinstance(event, RegisterCapabilityRequest)
+            return event
 
         elif request.method == "$/progress":
             assert request.params is not None
             assert isinstance(request.params, dict)
             kind = MWorkDoneProgressKind(request.params["value"]["kind"])
             if kind == MWorkDoneProgressKind.BEGIN:
-                return parse_request(WorkDoneProgressBegin)
+                event = parse_request(WorkDoneProgressBegin)
+                assert isinstance(event, WorkDoneProgressBegin)
+                return event
             elif kind == MWorkDoneProgressKind.REPORT:
-                return parse_request(WorkDoneProgressReport)
+                event = parse_request(WorkDoneProgressReport)
+                assert isinstance(event, WorkDoneProgressReport)
+                return event
             elif kind == MWorkDoneProgressKind.END:
-                return parse_request(WorkDoneProgressEnd)
+                event = parse_request(WorkDoneProgressEnd)
+                assert isinstance(event, WorkDoneProgressEnd)
+                return event
             else:
                 raise RuntimeError("this shouldn't happen")
 
@@ -515,7 +538,7 @@ class Client:
         self,
         text_document_position: TextDocumentPosition,
         context: t.Optional[CompletionContext] = None,
-    ) -> int:
+    ) -> Id:
         assert self._state == ClientState.NORMAL
         params = {}
         params.update(text_document_position.model_dump())
@@ -527,47 +550,47 @@ class Client:
         self,
         text_document_position: TextDocumentPosition,
         new_name: str,
-    ) -> int:
+    ) -> Id:
         assert self._state == ClientState.NORMAL
         params = {}
         params.update(text_document_position.model_dump())
         params["newName"] = new_name
         return self._send_request(method="textDocument/rename", params=params)
 
-    def hover(self, text_document_position: TextDocumentPosition) -> int:
+    def hover(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/hover", params=text_document_position.model_dump()
         )
 
-    def folding_range(self, text_document: TextDocumentIdentifier) -> int:
+    def folding_range(self, text_document: TextDocumentIdentifier) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/foldingRange",
             params={"textDocument": text_document.model_dump()},
         )
 
-    def signatureHelp(self, text_document_position: TextDocumentPosition) -> int:
+    def signatureHelp(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/signatureHelp",
             params=text_document_position.model_dump(),
         )
 
-    def definition(self, text_document_position: TextDocumentPosition) -> int:
+    def definition(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/definition", params=text_document_position.model_dump()
         )
 
-    def declaration(self, text_document_position: TextDocumentPosition) -> int:
+    def declaration(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/declaration",
             params=text_document_position.model_dump(),
         )
 
-    def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> int:
+    def inlay_hint(self, text_document: TextDocumentIdentifier, range: Range) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/inlayHint",
@@ -577,14 +600,14 @@ class Client:
             },
         )
 
-    def typeDefinition(self, text_document_position: TextDocumentPosition) -> int:
+    def typeDefinition(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/typeDefinition",
             params=text_document_position.model_dump(),
         )
 
-    def references(self, text_document_position: TextDocumentPosition) -> int:
+    def references(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         params = {
             "context": {"includeDeclaration": True},
@@ -593,25 +616,25 @@ class Client:
         return self._send_request(method="textDocument/references", params=params)
 
     # TODO incomplete
-    def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> int:
+    def prepareCallHierarchy(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/prepareCallHierarchy",
             params=text_document_position.model_dump(),
         )
 
-    def implementation(self, text_document_position: TextDocumentPosition) -> int:
+    def implementation(self, text_document_position: TextDocumentPosition) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/implementation",
             params=text_document_position.model_dump(),
         )
 
-    def workspace_symbol(self, query: str = "") -> int:
+    def workspace_symbol(self, query: str = "") -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(method="workspace/symbol", params={"query": query})
 
-    def documentSymbol(self, text_document: TextDocumentIdentifier) -> int:
+    def documentSymbol(self, text_document: TextDocumentIdentifier) -> Id:
         assert self._state == ClientState.NORMAL
         return self._send_request(
             method="textDocument/documentSymbol",
@@ -620,7 +643,7 @@ class Client:
 
     def formatting(
         self, text_document: TextDocumentIdentifier, options: FormattingOptions
-    ) -> int:
+    ) -> Id:
         assert self._state == ClientState.NORMAL
         params = {
             "textDocument": text_document.model_dump(),
@@ -633,7 +656,7 @@ class Client:
         text_document: TextDocumentIdentifier,
         range: Range,
         options: FormattingOptions,
-    ) -> int:
+    ) -> Id:
         assert self._state == ClientState.NORMAL
         params = {
             "textDocument": text_document.model_dump(),

@@ -1,4 +1,5 @@
 """Convert a cov.xml report so that it is usable locally"""
+
 import os.path
 
 from lxml import etree as et  # type: ignore
