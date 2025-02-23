@@ -1,6 +1,5 @@
-import pytest
-from sansio_lsp_client.io_handler import _parse_one_message, _parse_messages
-from sansio_lsp_client.structs import MessageType, Request, Response
+from sansio_lsp_client.io_handler import _parse_one_message
+from sansio_lsp_client.structs import Request, Response
 
 
 def test_parse_one_message_request():
