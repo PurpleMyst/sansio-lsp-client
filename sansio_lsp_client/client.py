@@ -250,12 +250,15 @@ class Client:
                     completion_list = CompletionList.model_validate(response.result)
                 except ValidationError:
                     try:
-                        if isinstance(response.result, dict) and "items" in response.result:
+                        if (
+                            isinstance(response.result, dict)
+                            and "items" in response.result
+                        ):
                             completion_list = CompletionList(
                                 isIncomplete=False,
-                                items=TypeAdapter(t.List[CompletionItem]).validate_python(
-                                    response.result["items"]
-                                ),
+                                items=TypeAdapter(
+                                    t.List[CompletionItem]
+                                ).validate_python(response.result["items"]),
                             )
                         else:
                             completion_list = None
