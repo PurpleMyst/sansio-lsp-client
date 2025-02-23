@@ -43,7 +43,7 @@ jobs:
           pip install poetry && poetry install
       - run: |
           poetry run pytest --cov=sansio_lsp_client --cov-report=xml:cov.xml -v
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-${{ matrix.python-version }}
           path: cov.xml

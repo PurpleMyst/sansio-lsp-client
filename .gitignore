@@ -137,3 +137,5 @@ tags
 /cov.xml
 /go/
 /tests/langservers/
+
+.vscode
