@@ -27,7 +27,7 @@ jobs:
       - shell: bash
         run: |
           cd tests/langservers
-          for VERSION in 10.0.0 11.0.0; do
+          for VERSION in 18.1.3 19.1.2; do
             wget "https://github.com/clangd/clangd/releases/download/$VERSION/clangd-linux-$VERSION.zip"
             python3 -m zipfile -e "clangd-linux-$VERSION.zip" .
             chmod +x clangd_$VERSION/bin/clangd
@@ -43,7 +43,7 @@ jobs:
           pip install poetry && poetry install
       - run: |
           poetry run pytest --cov=sansio_lsp_client --cov-report=xml:cov.xml -v
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-report-${{ matrix.python-version }}
           path: cov.xml

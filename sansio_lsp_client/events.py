@@ -26,7 +26,6 @@ from .structs import (
     DocumentSymbol,
     WorkspaceFolder,
     ProgressToken,
-    ProgressValue,
     WorkDoneProgressBeginValue,
     WorkDoneProgressReportValue,
     WorkDoneProgressEndValue,
@@ -41,10 +40,10 @@ class Event(BaseModel):
 
 
 class ResponseError(Event):
-    message_id: t.Optional[Id]
+    message_id: t.Optional[Id] = None
     code: int
     message: str
-    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict, None]]
+    data: t.Optional[t.Union[str, int, float, bool, t.List[t.Any], JSONDict]] = None
 
 
 class ServerRequest(Event):
@@ -82,7 +81,7 @@ class ShowMessageRequest(ServerRequest):
         are added to the client's internal send buffer.
         """
         self._client._send_response(
-            id=self._id, result=action.dict() if action is not None else None
+            id=self._id, result=action.model_dump() if action is not None else None
         )
 
 
@@ -100,7 +99,11 @@ class WorkDoneProgressCreate(ServerRequest):
 
 class Progress(ServerNotification):
     token: ProgressToken
-    value: ProgressValue
+    value: t.Union[
+        WorkDoneProgressBeginValue,
+        WorkDoneProgressReportValue,
+        WorkDoneProgressEndValue,
+    ]
 
 
 class WorkDoneProgress(Progress):
@@ -136,18 +139,18 @@ class PublishDiagnostics(ServerNotification):
 
 
 class Hover(Event):
-    message_id: t.Optional[Id]  # custom...
+    message_id: t.Optional[Id] = None  # custom...
     contents: t.Union[
         t.List[t.Union[MarkedString, str]], MarkedString, MarkupContent, str
     ]
-    range: t.Optional[Range]
+    range: t.Optional[Range] = None
 
 
 class SignatureHelp(Event):
-    message_id: t.Optional[Id]  # custom...
+    message_id: t.Optional[Id] = None  # custom...
     signatures: t.List[SignatureInformation]
-    activeSignature: t.Optional[int]
-    activeParameter: t.Optional[int]
+    activeSignature: t.Optional[int] = None
+    activeParameter: t.Optional[int] = None
 
     def get_hint_str(self) -> t.Optional[str]:
         if len(self.signatures) == 0:
@@ -158,14 +161,14 @@ class SignatureHelp(Event):
 
 
 class Definition(Event):
-    message_id: t.Optional[Id]
-    result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
+    message_id: t.Optional[Id] = None
+    result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None] = None
 
 
 class WorkspaceEdit(Event):
-    message_id: t.Optional[Id]
-    changes: t.Optional[t.Dict[str, TextEdit]]
-    documentChanges: t.Optional[t.List[TextDocumentEdit]]
+    message_id: t.Optional[Id] = None
+    changes: t.Optional[t.Dict[str, t.List[TextEdit]]] = None
+    documentChanges: t.Optional[t.List[TextDocumentEdit]] = None
 
 
 # result is a list, so putting in a custom class
@@ -186,18 +189,18 @@ class MWorkspaceSymbols(Event):
 
 
 class MFoldingRanges(Event):
-    message_id: t.Optional[Id]
-    result: t.Optional[t.List[FoldingRange]]
+    message_id: t.Optional[Id] = None
+    result: t.Optional[t.List[FoldingRange]] = None
 
 
 class MInlayHints(Event):
-    message_id: t.Optional[Id]
-    result: t.Optional[t.List[InlayHint]]
+    message_id: t.Optional[Id] = None
+    result: t.Optional[t.List[InlayHint]] = None
 
 
 class MDocumentSymbols(Event):
-    message_id: t.Optional[Id]
-    result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None]
+    message_id: t.Optional[Id] = None
+    result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None] = None
 
 
 class Declaration(Event):
@@ -216,8 +219,8 @@ class RegisterCapabilityRequest(ServerRequest):
 
 
 class DocumentFormatting(Event):
-    message_id: t.Optional[Id]
-    result: t.Union[t.List[TextEdit], None]
+    message_id: t.Optional[Id] = None
+    result: t.Union[t.List[TextEdit], None] = None
 
 
 class WorkspaceFolders(ServerRequest):
@@ -232,12 +235,12 @@ class WorkspaceFolders(ServerRequest):
         """
         self._client._send_response(
             id=self._id,
-            result=[f.dict() for f in folders] if folders is not None else None,
+            result=[f.model_dump() for f in folders] if folders is not None else None,
         )
 
 
 class ConfigurationRequest(ServerRequest):
     items: t.List[ConfigurationItem]
 
-    def reply(self, result: t.List[t.Any] = []) -> None:
+    def reply(self, result: t.List[t.Any]) -> None:
         self._client._send_response(id=self._id, result=result)
