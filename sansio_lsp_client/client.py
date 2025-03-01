@@ -149,7 +149,11 @@ class Client:
         root_uri: t.Optional[str] = None,
         workspace_folders: t.Optional[t.List[WorkspaceFolder]] = None,
         trace: str = "off",
+        capabilities: dict = None,
     ) -> None:
+        if not capabilities:
+            capabilities = CAPABILITIES
+
         self._state = ClientState.NOT_INITIALIZED
 
         # Used to save data as it comes in (from `recieve_bytes`) until we have
@@ -180,7 +184,7 @@ class Client:
                     else [f.model_dump() for f in workspace_folders]
                 ),
                 "trace": trace,
-                "capabilities": CAPABILITIES,
+                "capabilities": capabilities,
             },
         )
         self._state = ClientState.WAITING_FOR_INITIALIZED
