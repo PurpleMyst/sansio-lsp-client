@@ -42,6 +42,7 @@ class Event(BaseModel):
 class MethodResponse(Event):
     message_id: t.Optional[Id] = None
 
+
 class ResponseError(Event):
     message_id: t.Optional[Id] = None
     code: int
@@ -139,8 +140,10 @@ class PublishDiagnostics(ServerNotification):
     uri: str
     diagnostics: t.List[Diagnostic]
 
+
 class WorkspaceProjectInitializationComplete(ServerNotification):
     pass
+
 
 class Hover(MethodResponse):
     contents: t.Union[
@@ -199,9 +202,11 @@ class MInlayHints(MethodResponse):
 class MDocumentSymbols(MethodResponse):
     result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None] = None
 
+
 class Declaration(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
-    
+
+
 class TypeDefinition(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
 
