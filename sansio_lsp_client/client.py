@@ -19,6 +19,7 @@ from .events import (
     MFoldingRanges,
     MInlayHints,
     MWorkspaceSymbols,
+    MethodResponse,
     PublishDiagnostics,
     References,
     RegisterCapabilityRequest,
@@ -37,6 +38,7 @@ from .events import (
     WorkDoneProgressReport,
     WorkspaceEdit,
     WorkspaceFolders,
+    WorkspaceProjectInitializationComplete
 )
 from .io_handler import _make_request, _make_response, _parse_messages
 from .structs import (
@@ -352,7 +354,6 @@ class Client:
                 event = TypeAdapter(DocumentFormatting).validate_python(
                     {"result": response.result}
                 )
-                event.message_id = response.id
 
             # WORKSPACE
             case "workspace/symbol":
@@ -362,6 +363,9 @@ class Client:
 
             case _:
                 raise NotImplementedError((response, request))
+
+        if isinstance(event, MethodResponse):
+            event.message_id = response.id
 
         return event
 
@@ -375,7 +379,10 @@ class Client:
                 event._client = self
                 return event
             elif issubclass(event_cls, ServerNotification):
-                return TypeAdapter(event_cls).validate_python(request.params)
+                if isinstance(request.params, dict):
+                    return TypeAdapter(event_cls).validate_python(request.params)
+                else:
+                    return TypeAdapter(event_cls).validate_python({})
             else:
                 raise TypeError(
                     "`event_cls` must be a subclass of ServerRequest"
@@ -389,6 +396,10 @@ class Client:
         elif request.method == "workspace/configuration":
             event = parse_request(ConfigurationRequest)
             assert isinstance(event, ConfigurationRequest)
+            return event
+        elif request.method == "workspace/projectInitializationComplete":
+            event = parse_request(WorkspaceProjectInitializationComplete)
+            assert isinstance(event, WorkspaceProjectInitializationComplete)
             return event
         elif request.method == "window/showMessage":
             event = parse_request(ShowMessage)

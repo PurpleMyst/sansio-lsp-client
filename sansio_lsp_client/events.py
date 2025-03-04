@@ -39,6 +39,9 @@ class Event(BaseModel):
     pass
 
 
+class MethodResponse(Event):
+    message_id: t.Optional[Id] = None
+
 class ResponseError(Event):
     message_id: t.Optional[Id] = None
     code: int
@@ -123,8 +126,7 @@ class WorkDoneProgressEnd(WorkDoneProgress):
 
 
 # XXX: should these two be just Events or?
-class Completion(Event):
-    message_id: Id
+class Completion(MethodResponse):
     completion_list: t.Optional[CompletionList]
 
 
@@ -137,17 +139,17 @@ class PublishDiagnostics(ServerNotification):
     uri: str
     diagnostics: t.List[Diagnostic]
 
+class WorkspaceProjectInitializationComplete(ServerNotification):
+    pass
 
-class Hover(Event):
-    message_id: t.Optional[Id] = None  # custom...
+class Hover(MethodResponse):
     contents: t.Union[
         t.List[t.Union[MarkedString, str]], MarkedString, MarkupContent, str
     ]
     range: t.Optional[Range] = None
 
 
-class SignatureHelp(Event):
-    message_id: t.Optional[Id] = None  # custom...
+class SignatureHelp(MethodResponse):
     signatures: t.List[SignatureInformation]
     activeSignature: t.Optional[int] = None
     activeParameter: t.Optional[int] = None
@@ -160,19 +162,17 @@ class SignatureHelp(Event):
         return sig.label
 
 
-class Definition(Event):
-    message_id: t.Optional[Id] = None
+class Definition(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None] = None
 
 
-class WorkspaceEdit(Event):
-    message_id: t.Optional[Id] = None
+class WorkspaceEdit(MethodResponse):
     changes: t.Optional[t.Dict[str, t.List[TextEdit]]] = None
     documentChanges: t.Optional[t.List[TextDocumentEdit]] = None
 
 
 # result is a list, so putting in a custom class
-class References(Event):
+class References(MethodResponse):
     result: t.Union[t.List[Location], None]
 
 
@@ -180,34 +180,29 @@ class MCallHierarchItems(Event):
     result: t.Union[t.List[CallHierarchyItem], None]
 
 
-class Implementation(Event):
+class Implementation(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
 
 
-class MWorkspaceSymbols(Event):
+class MWorkspaceSymbols(MethodResponse):
     result: t.Union[t.List[SymbolInformation], None]
 
 
-class MFoldingRanges(Event):
-    message_id: t.Optional[Id] = None
+class MFoldingRanges(MethodResponse):
     result: t.Optional[t.List[FoldingRange]] = None
 
 
-class MInlayHints(Event):
-    message_id: t.Optional[Id] = None
+class MInlayHints(MethodResponse):
     result: t.Optional[t.List[InlayHint]] = None
 
 
-class MDocumentSymbols(Event):
-    message_id: t.Optional[Id] = None
+class MDocumentSymbols(MethodResponse):
     result: t.Union[t.List[SymbolInformation], t.List[DocumentSymbol], None] = None
 
-
-class Declaration(Event):
+class Declaration(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
-
-
-class TypeDefinition(Event):
+    
+class TypeDefinition(MethodResponse):
     result: t.Union[Location, t.List[t.Union[Location, LocationLink]], None]
 
 
@@ -218,8 +213,7 @@ class RegisterCapabilityRequest(ServerRequest):
         self._client._send_response(id=self._id, result={})
 
 
-class DocumentFormatting(Event):
-    message_id: t.Optional[Id] = None
+class DocumentFormatting(MethodResponse):
     result: t.Union[t.List[TextEdit], None] = None
 
 
