@@ -417,6 +417,10 @@ class Client:
 
         elif request.method == "$/progress":
             assert request.params is not None
+            assert isinstance(request.params, dict), "Expected request.params to be a dictionary"
+            assert "value" in request.params, "Expected 'value' in request.params"
+            assert isinstance(request.params["value"], dict), "Expected request.params['value'] to be a dictionary"
+            assert "kind" in request.params["value"], "Expected 'kind' in request.params['value']"
             kind = MWorkDoneProgressKind(request.params["value"]["kind"])
             if kind == MWorkDoneProgressKind.BEGIN:
                 event = parse_request(WorkDoneProgressBegin)
