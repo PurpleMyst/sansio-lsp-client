@@ -142,6 +142,8 @@ class PublishDiagnostics(ServerNotification):
 
 
 class WorkspaceProjectInitializationComplete(ServerNotification):
+    """Notification, exclusive to the Roslyn language server to indicate that the solution has been loaded."""
+
     pass
 
 
